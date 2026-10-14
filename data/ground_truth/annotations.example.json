@@ -1,0 +1,12 @@
+{
+  "verified": false,
+  "note": "FORMAT EXAMPLE ONLY - values are invented. Keys under a document are row_id (1-based); null = truly blank cell; values are strings (leading zeros kept). Set verified=true only in a real annotations file after a person has checked every value.",
+  "documents": {
+    "example_doc": {
+      "1": "15",
+      "2": "007",
+      "3": "0",
+      "7": null
+    }
+  }
+}

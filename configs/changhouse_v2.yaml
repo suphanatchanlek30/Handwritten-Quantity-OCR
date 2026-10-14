@@ -1,0 +1,174 @@
+# CHANGHOUSE purchase order — template V2 (มีคอลัมน์ No. ลำดับ)
+# พิกัดทั้งหมดอ้างอิงภาพ reference 'Data Test/test/example.jpg' ขนาด 2591 x 3452 px
+
+project:
+  name: handwritten-qty-ocr
+  template_id: CHANGHOUSE_V2
+
+hardware:
+  # cpu  = ใช้ CPU (ค่าที่ตรวจแล้วบน Mac; Apple Silicon ไม่มี NVIDIA GPU)
+  # auto = ใช้ GPU ถ้ามี CUDA สำหรับ engine ที่เลือก ไม่งั้นใช้ CPU
+  # gpu / gpu:N = บังคับใช้ NVIDIA GPU (ถ้าไม่มี → error ชัดเจน ไม่ถอยไป CPU เงียบๆ)
+  # เส้นทาง GPU เตรียมไว้แต่ยังไม่ได้ทดสอบบน GPU จริง — ดู README หัวข้อ "รันบน GPU"
+  device: cpu
+  cpu_threads: 4
+
+network:
+  # เครื่องนี้ IPv6 ใช้ไม่ได้ → บังคับ IPv4 ก่อนดาวน์โหลดโมเดล
+  force_ipv4: true
+  # ข้ามการเช็กการเชื่อมต่อ model hoster ตอน init (ใช้ cache ในเครื่อง)
+  disable_model_source_check: true
+
+ocr:
+  model_name: PP-OCRv5_server_rec
+  # onnxruntime = โมเดล PP-OCRv5_server_rec ตัวเดียวกัน (weights ทางการที่ export เป็น ONNX: PaddlePaddle/PP-OCRv5_server_rec_onnx)
+  # วัดบน M5: OCR ~54 → ~19 ms/ภาพ (เร็วขึ้น ~2.9x), RSS ~1.15 → ~0.74 GB; ผล value/status/needs_review ตรง baseline 630/630 field
+  # (score ต่างกัน ≤ 4e-5) — ตรวจด้วย scripts/compare_results.py; กลับไปใช้ paddle_static ได้ทุกเมื่อ
+  engine: onnxruntime
+  # thread ของ ONNX Runtime: วัดสลับ A/B แล้ว 4 (= จำนวน P-core) เร็วเท่า/ดีกว่า default และไม่แย่ง core กับ OpenCV
+  onnx_intra_op_threads: 4
+  # ใช้เฉพาะ paddle_static: MKLDNN/oneDNN เป็นของ x86 — บน Apple Silicon ไม่มี (paddlex is_mkldnn_available() = False)
+  enable_mkldnn: false
+  # batch_size > 1: paddle เร็วขึ้นแค่ ~3%, onnxruntime ช้าลง ~2x (ภาพกว้างไม่เท่ากัน ต้อง pad) → คง 1
+  batch_size: 1
+  # สมมติฐานเริ่มต้นเท่านั้น ยังไม่ได้ calibrate กับ labeled data
+  confidence_review_threshold: 0.85
+  # variant หลักที่ใช้เป็นคำตอบ (เลือกจากผล experiment E1-E6 บน 20 ภาพ: tight_crop ดีที่สุดชัดเจน)
+  # variant อื่นใช้ cross-check เท่านั้น
+  primary_variant: tight_crop
+  # ถอดรหัสผลโมเดลใหม่โดยจำกัดให้ออกได้แค่ 0-9 (ใช้ probability เดิม ไม่ต้อง inference เพิ่ม)
+  digit_constrained_decoding: true
+  # ตัวเลขเขียนติดกันที่โมเดลรวบเป็นตัวเดียว (79 → 7): ถอดใหม่แบบบังคับ +1 หลัก
+  missing_digit_max_penalty: 0.03
+  missing_digit_max_penalty_with_ink_groups: 0.06
+  # variant รองที่อ่านได้ค่าต่างจาก primary ด้วย score >= ค่านี้ → needs_review
+  contradiction_min_score: 0.85
+
+field:
+  target_column: qty
+  expected_rows: 10
+  min_digits: 1
+  max_digits: 3
+
+template:
+  width: 2591
+  height: 3452
+  # เส้นตั้ง: No. | barcode | title | qty | unit (ซ้าย→ขวา) — วัดจากภาพ reference
+  vertical_lines: [410, 517, 928, 1476, 1750, 2233]
+  # เส้นนอน: บนสุดของ header, ล่าง header, ... ล่างสุดของตาราง
+  horizontal_lines: [902, 1037, 1170, 1298, 1426, 1556, 1686, 1816, 1945, 2076, 2204, 2335]
+  qty_column_index: 3        # ช่องระหว่าง vertical_lines[3] กับ vertical_lines[4]
+  header_rows: 1
+
+layout:
+  # auto = หาตาราง/คอลัมน์/แถวจากภาพเอง (ไม่ต้องวัดพิกัด, ทนภาพถ่ายเอียง/บิด/แสงไม่เท่า, ฟอร์มเพิ่มคอลัมน์ได้)
+  # template = ใช้พิกัดใน section template ข้างบน (โหมดเดิม)
+  mode: template   # ไฟล์นี้ = พิกัดตายตัวของฟอร์มนี้; ใช้ configs/changhouse.yaml สำหรับโหมด auto
+  # ขนาดตารางหลังยืดตรง (px) — ทำให้ threshold ของลายมือใช้ได้ทุกความละเอียดภาพ
+  normalized_table_width: 1360
+  margin_px: 12
+  # เส้นตารางต้องยาวอย่างน้อยสัดส่วนนี้: ตอนค้นหาขอบตาราง / ตารางสุดท้าย
+  min_line_coverage: 0.5
+  final_line_coverage: 0.8
+  # ค้นหาเส้นขอบนอกจริงเผื่อออกไป (สัดส่วนความกว้างตาราง) แล้วยืดใหม่ให้ขอบตรงเส้น
+  search_margin_ratio: 0.08
+  border_tolerance_px: 8
+  # ทดลองแล้ว: kernel สั้นลงแย่กว่า (คง 1.0); refine 2 รอบดีที่สุดเมื่อใช้คู่กับ fit_border_lines
+  coarse_kernel_scale: 1.0
+  refine_iterations: 2
+  # กรอบผู้สมัครเพิ่มจาก mask ที่ขยายให้ท่อนเส้นที่ขาดต่อกัน (สัดส่วนขนาดภาพ)
+  candidate_dilate_ratio: 0.01
+  # หามุมตารางที่แม่นยำจากเส้นขอบ 4 ด้าน (Hough, ยอมให้เส้นเอียงได้) — ทน perspective ที่เหลือ
+  fit_border_lines: true
+  border_fit_scale: 0.75
+  min_column_width_px: 25
+  min_row_height_px: 30
+  min_columns: 3
+  min_table_area_ratio: 0.03
+  # ปรับแสงให้เรียบ (กันเงา/แสงไม่เท่าในภาพถ่าย)
+  flatten_illumination: true
+  flatten_kernel_px: 31
+  header_rows: 1
+  # หาคอลัมน์ qty จากหัวตาราง (OCR); ถ้าอ่านไม่ได้ใช้ "คอลัมน์ที่ N จากขวา"
+  qty_header_keywords: [qty, จำนวน]
+  qty_column_from_right: 2
+
+alignment:
+  # automatic_with_fallback | automatic | static
+  mode: automatic_with_fallback
+  # อัตราส่วนเส้นตาราง template ที่ต้องเจอหลัง warp ถึงจะถือว่า align สำเร็จ
+  min_line_match_ratio: 0.85
+  line_snap_tolerance_px: 12
+  # สัดส่วน grid mask: pixel มืดและสีไม่สด (เส้นพิมพ์)
+  grid_max_gray: 210
+  grid_max_saturation: 60
+  # ความยาว kernel morphology เทียบกับขนาดภาพ
+  horizontal_kernel_ratio: 0.08
+  vertical_kernel_ratio: 0.04
+  # ขยายเส้นตั้งฉากกับทิศของเส้น (px) ให้ทนเส้นเอียงเล็กน้อยจาก perspective
+  line_thickening_px: 3
+  # หมุนแก้ภาพเอียงก่อนหาเส้น (HoughLinesP) — morphology kernel ยาวๆ ทนเอียงได้ไม่ถึง 1-2 องศา
+  deskew: true
+  max_skew_deg: 15
+  # adaptive = threshold ตามแสงเฉพาะที่ (ทนเงา) ; global = ใช้ grid_max_gray
+  grid_threshold: adaptive
+  adaptive_block_px: 41
+  adaptive_c: 12
+
+roi:
+  # ระยะหดเข้าจากเส้นตาราง (px บน aligned image) เพื่อตัดเส้นขอบ
+  crop_margin_px: 4
+  min_crop_width: 40
+  min_crop_height: 30
+
+blank_detection:
+  enabled: true
+  # relative = วัดความต่างจากสีกระดาษในช่องนั้นเอง (ทนภาพถ่ายเบลอ/ซีด/แสงต่างกัน)
+  # absolute = ใช้ color_min_saturation / dark_max_gray แบบตายตัว (โหมดเดิมสำหรับภาพสแกน)
+  ink_threshold: relative
+  dark_min_contrast: 45
+  color_min_contrast: 30
+  # ระยะหดเพิ่มเฉพาะตอนนับ ink เพื่อกันเส้นขอบหลุดเข้ามา
+  inspect_margin_px: 3
+  # ink สี (แดง/น้ำเงิน ฯลฯ): saturation และ value ขั้นต่ำ
+  color_min_saturation: 40
+  color_min_value: 50
+  # ink สีดำ: pixel มืดกว่าค่านี้ที่ไม่ใช่ส่วนของเส้น grid
+  dark_max_gray: 170
+  # component ที่เล็กกว่านี้ถือเป็น noise
+  min_component_area: 6
+  # จำนวน ink pixel รวม: >= nonblank_min → nonblank, >= uncertain_min → uncertain
+  nonblank_min_pixels: 40
+  uncertain_min_pixels: 12
+  # stroke สูงอย่างน้อยเท่านี้ → นับเป็น nonblank แม้ pixel น้อย (เลข 1 บางๆ)
+  min_stroke_height_px: 18
+  # component ที่นับเป็น "กลุ่มตัวเลข" ต้องมีพื้นที่และความสูงขั้นต่ำ (สัดส่วนของ ink สูงสุด)
+  group_min_area: 15
+  group_min_height_ratio: 0.3
+
+preprocessing:
+  # ค่า default มาจากการทดลองบน 20 ภาพ (docs/BENCHMARK.md):
+  #   tight_crop + digit_segments (ทั้งคู่ใช้ digit-constrained decoding) ดีที่สุดและเร็วกว่า
+  #   variant แบบทั้งช่อง (original/grayscale/red_mask/ink_isolation/adaptive) ยังเปิดใช้ได้เพื่อทดลอง
+  original: false
+  grayscale: false
+  red_mask: false
+  # แยกหมึกทุกสี (แดง/น้ำเงิน/ดำ) → ตัวเลขเข้มบนพื้นขาว
+  ink_isolation: false
+  adaptive_threshold: false
+  # ตัดรอบหมึก + padding (variant หลัก)
+  tight_crop: true
+  # แยกทีละกลุ่มหมึก (≈ ทีละหลัก) อ่านทีละภาพแล้วต่อกัน — ใช้ตรวจจำนวนหลัก
+  digit_segments: true
+  # padding รอบ ink bbox สำหรับ tight_crop (สัดส่วนของความสูง ink)
+  tight_crop_padding_ratio: 0.35
+  clahe: false
+  red_hue_ranges: [[0, 12], [160, 180]]
+  red_min_saturation: 40
+  red_min_value: 40
+
+output:
+  save_crops: true
+  save_debug_images: true
+  save_json: true
+  save_csv: true

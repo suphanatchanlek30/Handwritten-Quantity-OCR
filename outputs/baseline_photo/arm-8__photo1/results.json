@@ -1,0 +1,802 @@
+{
+  "document_id": "arm-8__photo1",
+  "template_id": "CHANGHOUSE_AUTO",
+  "model": "PP-OCRv5_server_rec",
+  "status": "completed",
+  "image_width": 2830,
+  "image_height": 2984,
+  "source_path": "data/simulated_photos/arm-8__photo1.jpg",
+  "alignment": {
+    "success": true,
+    "method": "auto_rectify",
+    "used_fallback": false,
+    "reasons": [],
+    "H": [
+      [
+        0.746807,
+        -0.025227,
+        -266.95209
+      ],
+      [
+        0.034124,
+        0.743794,
+        -723.275802
+      ],
+      [
+        -0.0,
+        -6e-06,
+        1.0
+      ]
+    ],
+    "H_inv": [
+      [
+        1.337015,
+        0.048638,
+        392.09756
+      ],
+      [
+        -0.061211,
+        1.350442,
+        960.401692
+      ],
+      [
+        0.0,
+        8e-06,
+        1.006146
+      ]
+    ],
+    "detected_quad": [
+      [
+        406.20001220703125,
+        969.7999877929688
+      ],
+      [
+        2212.800048828125,
+        886.9000244140625
+      ],
+      [
+        2240.0,
+        2106.39990234375
+      ],
+      [
+        447.20001220703125,
+        2188.89990234375
+      ]
+    ],
+    "grid": {
+      "vertical_lines": [
+        12,
+        316,
+        925,
+        1156,
+        1372
+      ],
+      "horizontal_lines": [
+        12,
+        82,
+        168,
+        253,
+        338,
+        423,
+        508,
+        593,
+        678,
+        763,
+        848,
+        933
+      ],
+      "detected_vertical": [
+        12,
+        316,
+        925,
+        1156,
+        1372
+      ],
+      "detected_horizontal": [
+        12,
+        82,
+        168,
+        253,
+        338,
+        423,
+        508,
+        593,
+        678,
+        763,
+        848,
+        933
+      ],
+      "missing_vertical": [],
+      "missing_horizontal": [],
+      "match_ratio": 1.0
+    },
+    "input_size": [
+      2830,
+      2984
+    ],
+    "layout_mode": "auto",
+    "skew_deg": -2.63,
+    "quad_candidates": 1,
+    "columns": 4,
+    "rows_incl_header": 11,
+    "rectified_size": [
+      1384,
+      945
+    ],
+    "qty_column": {
+      "index": 2,
+      "method": "header_ocr",
+      "header_texts": [
+        "",
+        "",
+        "qty",
+        ""
+      ],
+      "notes": []
+    }
+  },
+  "timings_ms": {
+    "load": 34.87,
+    "alignment": 321.63,
+    "table_extraction": 0.07,
+    "blank_detection": 3.93,
+    "preprocessing": 2.13,
+    "ocr_inference": 1014.84,
+    "total": 1389.18
+  },
+  "errors": [],
+  "fields": [
+    {
+      "row_id": 1,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        86,
+        1152,
+        164
+      ],
+      "bbox_original": [
+        1626,
+        999,
+        1926,
+        1117
+      ],
+      "is_blank": false,
+      "raw_text": "22",
+      "normalized_text": "22",
+      "value": "22",
+      "value_int": 22,
+      "confidence": 0.971041,
+      "status": "ok",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 267,
+        "ink_ratio": 0.017089,
+        "n_components": 2,
+        "max_component_height": 27,
+        "ink_groups": 2,
+        "ink_bbox": [
+          70,
+          37,
+          117,
+          65
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "22",
+          "rec_score": 0.956993,
+          "normalized_text": "22",
+          "is_valid_numeric": true,
+          "inference_time_ms": 50.82,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "22",
+          "digit_score": 0.971041,
+          "digit_char_scores": [
+            0.994,
+            0.948
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "222",
+          "longer_penalty": 0.18674
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "22",
+          "rec_score": 0.989751,
+          "normalized_text": "22",
+          "is_valid_numeric": true,
+          "inference_time_ms": 105.21,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "22",
+          "digit_score": 0.989917,
+          "digit_char_scores": [
+            0.9904,
+            0.9899
+          ],
+          "digit_substituted": 0,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 2,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        172,
+        1152,
+        249
+      ],
+      "bbox_original": [
+        1629,
+        1113,
+        1929,
+        1230
+      ],
+      "is_blank": false,
+      "raw_text": "39",
+      "normalized_text": "39",
+      "value": "39",
+      "value_int": 39,
+      "confidence": 0.831253,
+      "status": "needs_review",
+      "needs_review": true,
+      "review_reasons": [
+        "tight_vs_segments_disagree(39 vs 32)",
+        "low_confidence(0.831<0.85)"
+      ],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 285,
+        "ink_ratio": 0.018498,
+        "n_components": 2,
+        "max_component_height": 33,
+        "ink_groups": 2,
+        "ink_bbox": [
+          79,
+          41,
+          114,
+          74
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "39",
+          "rec_score": 0.818812,
+          "normalized_text": "39",
+          "is_valid_numeric": true,
+          "inference_time_ms": 52.83,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "39",
+          "digit_score": 0.831253,
+          "digit_char_scores": [
+            0.9929,
+            0.6696
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "139",
+          "longer_penalty": 0.18738
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "32",
+          "rec_score": 0.943072,
+          "normalized_text": "32",
+          "is_valid_numeric": true,
+          "inference_time_ms": 105.71,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "32",
+          "digit_score": 0.943658,
+          "digit_char_scores": [
+            0.9903,
+            0.9437
+          ],
+          "digit_substituted": 0,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 3,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        257,
+        1152,
+        334
+      ],
+      "bbox_original": [
+        1632,
+        1226,
+        1931,
+        1343
+      ],
+      "is_blank": false,
+      "raw_text": "68",
+      "normalized_text": "68",
+      "value": "68",
+      "value_int": 68,
+      "confidence": 0.712937,
+      "status": "needs_review",
+      "needs_review": true,
+      "review_reasons": [
+        "tight_vs_segments_disagree(68 vs 63)",
+        "low_confidence(0.713<0.85)"
+      ],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 302,
+        "ink_ratio": 0.019601,
+        "n_components": 2,
+        "max_component_height": 34,
+        "ink_groups": 2,
+        "ink_bbox": [
+          87,
+          28,
+          120,
+          62
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "68",
+          "rec_score": 0.707346,
+          "normalized_text": "68",
+          "is_valid_numeric": true,
+          "inference_time_ms": 53.07,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "68",
+          "digit_score": 0.712937,
+          "digit_char_scores": [
+            0.9922,
+            0.4337
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "168",
+          "longer_penalty": 0.18218
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "6g",
+          "rec_score": 0.231123,
+          "normalized_text": "63",
+          "is_valid_numeric": true,
+          "inference_time_ms": 105.57,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "63",
+          "digit_score": 0.229808,
+          "digit_char_scores": [
+            0.9618,
+            0.2298
+          ],
+          "digit_substituted": 1,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 4,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        342,
+        1152,
+        419
+      ],
+      "bbox_original": [
+        1635,
+        1339,
+        1934,
+        1456
+      ],
+      "is_blank": false,
+      "raw_text": "74",
+      "normalized_text": "74",
+      "value": "74",
+      "value_int": 74,
+      "confidence": 0.998172,
+      "status": "ok",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 296,
+        "ink_ratio": 0.019212,
+        "n_components": 2,
+        "max_component_height": 32,
+        "ink_groups": 2,
+        "ink_bbox": [
+          78,
+          29,
+          126,
+          63
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "74",
+          "rec_score": 0.997052,
+          "normalized_text": "74",
+          "is_valid_numeric": true,
+          "inference_time_ms": 52.97,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "74",
+          "digit_score": 0.998172,
+          "digit_char_scores": [
+            0.9975,
+            0.9988
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "774",
+          "longer_penalty": 0.22905
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "74",
+          "rec_score": 0.99354,
+          "normalized_text": "74",
+          "is_valid_numeric": true,
+          "inference_time_ms": 105.94,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "74",
+          "digit_score": 0.993987,
+          "digit_char_scores": [
+            0.9978,
+            0.994
+          ],
+          "digit_substituted": 0,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 5,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        427,
+        1152,
+        504
+      ],
+      "bbox_original": [
+        1638,
+        1452,
+        1937,
+        1568
+      ],
+      "is_blank": false,
+      "raw_text": "99",
+      "normalized_text": "99",
+      "value": "99",
+      "value_int": 99,
+      "confidence": 0.998345,
+      "status": "ok",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 342,
+        "ink_ratio": 0.022198,
+        "n_components": 2,
+        "max_component_height": 35,
+        "ink_groups": 2,
+        "ink_bbox": [
+          75,
+          34,
+          114,
+          71
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "99",
+          "rec_score": 0.996974,
+          "normalized_text": "99",
+          "is_valid_numeric": true,
+          "inference_time_ms": 68.1,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "99",
+          "digit_score": 0.998345,
+          "digit_char_scores": [
+            0.9977,
+            0.999
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "999",
+          "longer_penalty": 0.22701
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "99",
+          "rec_score": 0.985763,
+          "normalized_text": "99",
+          "is_valid_numeric": true,
+          "inference_time_ms": 110.06,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "99",
+          "digit_score": 0.985924,
+          "digit_char_scores": [
+            0.9874,
+            0.9859
+          ],
+          "digit_substituted": 0,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 6,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        512,
+        1152,
+        589
+      ],
+      "bbox_original": [
+        1641,
+        1564,
+        1940,
+        1681
+      ],
+      "is_blank": false,
+      "raw_text": "14",
+      "normalized_text": "14",
+      "value": "14",
+      "value_int": 14,
+      "confidence": 0.958624,
+      "status": "ok",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": "tight_crop",
+      "crop_path": null,
+      "blank_stats": {
+        "label": "nonblank",
+        "ink_pixels": 250,
+        "ink_ratio": 0.016226,
+        "n_components": 2,
+        "max_component_height": 30,
+        "ink_groups": 2,
+        "ink_bbox": [
+          81,
+          24,
+          113,
+          59
+        ]
+      },
+      "candidates": [
+        {
+          "variant": "tight_crop",
+          "raw_text": "14",
+          "rec_score": 0.954575,
+          "normalized_text": "14",
+          "is_valid_numeric": true,
+          "inference_time_ms": 79.97,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "14",
+          "digit_score": 0.958624,
+          "digit_char_scores": [
+            0.9215,
+            0.9958
+          ],
+          "digit_substituted": 0,
+          "n_images": 1,
+          "longer_text": "144",
+          "longer_penalty": 0.15787
+        },
+        {
+          "variant": "digit_segments",
+          "raw_text": "|4",
+          "rec_score": 0.44049,
+          "normalized_text": "14",
+          "is_valid_numeric": true,
+          "inference_time_ms": 116.96,
+          "model_name": "PP-OCRv5_server_rec",
+          "error": null,
+          "digit_text": "14",
+          "digit_score": 0.1736,
+          "digit_char_scores": [
+            0.1736,
+            0.9918
+          ],
+          "digit_substituted": 1,
+          "n_images": 2,
+          "longer_text": null,
+          "longer_penalty": null
+        }
+      ]
+    },
+    {
+      "row_id": 7,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        597,
+        1152,
+        674
+      ],
+      "bbox_original": [
+        1644,
+        1677,
+        1942,
+        1793
+      ],
+      "is_blank": true,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "blank",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": {
+        "label": "blank",
+        "ink_pixels": 0,
+        "ink_ratio": 0.0,
+        "n_components": 0,
+        "max_component_height": 0,
+        "ink_groups": 0,
+        "ink_bbox": null
+      },
+      "candidates": []
+    },
+    {
+      "row_id": 8,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        682,
+        1152,
+        759
+      ],
+      "bbox_original": [
+        1647,
+        1789,
+        1945,
+        1905
+      ],
+      "is_blank": true,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "blank",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": {
+        "label": "blank",
+        "ink_pixels": 0,
+        "ink_ratio": 0.0,
+        "n_components": 0,
+        "max_component_height": 0,
+        "ink_groups": 0,
+        "ink_bbox": null
+      },
+      "candidates": []
+    },
+    {
+      "row_id": 9,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        767,
+        1152,
+        844
+      ],
+      "bbox_original": [
+        1650,
+        1901,
+        1948,
+        2017
+      ],
+      "is_blank": true,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "blank",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": {
+        "label": "blank",
+        "ink_pixels": 0,
+        "ink_ratio": 0.0,
+        "n_components": 0,
+        "max_component_height": 0,
+        "ink_groups": 0,
+        "ink_bbox": null
+      },
+      "candidates": []
+    },
+    {
+      "row_id": 10,
+      "field_type": "qty",
+      "bbox_aligned": [
+        929,
+        852,
+        1152,
+        929
+      ],
+      "bbox_original": [
+        1653,
+        2013,
+        1950,
+        2129
+      ],
+      "is_blank": true,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "blank",
+      "needs_review": false,
+      "review_reasons": [],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": {
+        "label": "blank",
+        "ink_pixels": 0,
+        "ink_ratio": 0.0,
+        "n_components": 0,
+        "max_component_height": 0,
+        "ink_groups": 0,
+        "ink_bbox": null
+      },
+      "candidates": []
+    }
+  ]
+}

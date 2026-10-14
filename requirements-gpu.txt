@@ -1,0 +1,16 @@
+# NVIDIA GPU machines (Linux x86_64 / Windows x64) — PREPARED, NOT YET TESTED ON A GPU
+# Uses the same verified versions as requirements.txt, except:
+#   - onnxruntime  -> onnxruntime-gpu (CUDA 13 + cuDNN 9 build; the [cuda,cudnn] extras pull the
+#     NVIDIA runtime libraries from pip, so no separate CUDA Toolkit install is needed — only a
+#     recent NVIDIA driver that supports CUDA 13)
+#   - no paddlepaddle: the default engine (onnxruntime) does not import paddle at all.
+#     Only if you set ocr.engine: paddle_static install paddlepaddle-gpu per paddlepaddle.org.cn.
+# Never install onnxruntime and onnxruntime-gpu together (they clash).
+paddleocr==3.7.0
+paddlex==3.7.2
+onnxruntime-gpu[cuda,cudnn]==1.31.0
+opencv-contrib-python==4.10.0.84
+numpy==2.3.5
+Pillow==12.1.0
+PyYAML==6.0.2
+pytest==9.1.1

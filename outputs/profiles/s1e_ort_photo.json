@@ -1,0 +1,28 @@
+{
+  "label": "ort_default_photo",
+  "documents": 42,
+  "repeat": 3,
+  "batch_size": 1,
+  "cpu_threads": 4,
+  "engine": "onnxruntime",
+  "onnx_intra_op_threads": null,
+  "init_ms": 684,
+  "median_stage_ms_per_doc": {
+    "alignment": 289.9,
+    "blank_detection": 3.8,
+    "load": 18.8,
+    "ocr_inference": 261.6,
+    "preprocessing": 2.0,
+    "table_extraction": 0.1,
+    "total": 591.8
+  },
+  "predict_calls_per_doc_median": 2.0,
+  "images_per_doc_median": 16.5,
+  "batch_wall_ms_per_repeat": [
+    24064,
+    24497,
+    25777
+  ],
+  "peak_rss_mb": 851,
+  "nondeterministic_documents": []
+}

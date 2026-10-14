@@ -1,0 +1,26 @@
+{
+  "label": "s1a_two_phase",
+  "documents": 21,
+  "repeat": 3,
+  "batch_size": 1,
+  "cpu_threads": 4,
+  "init_ms": 1458,
+  "median_stage_ms_per_doc": {
+    "alignment": 251.0,
+    "blank_detection": 2.4,
+    "load": 12.2,
+    "ocr_inference": 850.0,
+    "preprocessing": 1.7,
+    "table_extraction": 0.1,
+    "total": 1134.1
+  },
+  "predict_calls_per_doc_median": 17,
+  "images_per_doc_median": 17,
+  "batch_wall_ms_per_repeat": [
+    23446,
+    23441,
+    23428
+  ],
+  "peak_rss_mb": 1185,
+  "nondeterministic_documents": []
+}

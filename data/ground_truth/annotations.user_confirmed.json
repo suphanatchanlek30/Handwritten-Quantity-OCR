@@ -1,0 +1,18 @@
+{
+  "verified": true,
+  "note": "Values confirmed by the user on 2026-10-14 for Data Test/test/example.jpg: rows 1 and 3 were corrected (18, 79); rows 2, 4, 5, 6 were confirmed correct as read; rows 7-10 are empty. Only this document is human-verified.",
+  "documents": {
+    "example": {
+      "1": "18",
+      "2": "54",
+      "3": "79",
+      "4": "36",
+      "5": "289",
+      "6": "65",
+      "7": null,
+      "8": null,
+      "9": null,
+      "10": null
+    }
+  }
+}

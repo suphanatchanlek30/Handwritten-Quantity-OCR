@@ -1,0 +1,12 @@
+# Verified on MacBook Air M5 / macOS 27.0.1 / Python 3.11.17 (arm64) on 2026-10-14
+# PaddlePaddle must come from the official CPU index:
+#   python -m pip install paddlepaddle==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+paddlepaddle==3.3.0
+paddleocr==3.7.0
+paddlex==3.7.2
+onnxruntime==1.31.0
+opencv-contrib-python==4.10.0.84
+numpy==2.3.5
+Pillow==12.1.0
+PyYAML==6.0.2
+pytest==9.1.1

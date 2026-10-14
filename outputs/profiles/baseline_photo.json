@@ -1,0 +1,26 @@
+{
+  "label": "baseline_photo",
+  "documents": 42,
+  "repeat": 3,
+  "batch_size": 1,
+  "cpu_threads": 4,
+  "init_ms": 1391,
+  "median_stage_ms_per_doc": {
+    "alignment": 292.7,
+    "blank_detection": 3.4,
+    "load": 17.9,
+    "ocr_inference": 821.2,
+    "preprocessing": 1.8,
+    "table_extraction": 0.1,
+    "total": 1165.9
+  },
+  "predict_calls_per_doc_median": 16.5,
+  "images_per_doc_median": 16.5,
+  "batch_wall_ms_per_repeat": [
+    46042,
+    46004,
+    45351
+  ],
+  "peak_rss_mb": 1293,
+  "nondeterministic_documents": []
+}

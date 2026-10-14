@@ -1,0 +1,30 @@
+{
+  "label": "prefetch_scan",
+  "prefetch": true,
+  "documents": 21,
+  "repeat": 3,
+  "batch_size": 1,
+  "cpu_threads": 4,
+  "engine": "onnxruntime",
+  "onnx_intra_op_threads": 4,
+  "init_ms": 910,
+  "median_stage_ms_per_doc": {
+    "alignment": 498.1,
+    "blank_detection": 4.9,
+    "load": 21.7,
+    "ocr_inference": 453.6,
+    "preprocessing": 3.3,
+    "qty_column": 29.0,
+    "table_extraction": 0.1,
+    "total": 1018.6
+  },
+  "predict_calls_per_doc_median": 2,
+  "images_per_doc_median": 17,
+  "batch_wall_ms_per_repeat": [
+    11447,
+    12014,
+    11514
+  ],
+  "peak_rss_mb": 670,
+  "nondeterministic_documents": []
+}

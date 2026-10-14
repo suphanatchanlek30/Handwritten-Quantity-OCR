@@ -1,0 +1,250 @@
+{
+  "document_id": "arm-5__photo1",
+  "template_id": "CHANGHOUSE_AUTO",
+  "model": "PP-OCRv5_server_rec",
+  "status": "alignment_failed",
+  "image_width": 1780,
+  "image_height": 1877,
+  "source_path": "data/simulated_photos/arm-5__photo1.jpg",
+  "alignment": {
+    "success": false,
+    "method": "none",
+    "used_fallback": false,
+    "reasons": [
+      "no_table_with_grid_found"
+    ],
+    "H": null,
+    "H_inv": null,
+    "detected_quad": null,
+    "grid": null,
+    "input_size": [
+      1780,
+      1877
+    ],
+    "layout_mode": "auto",
+    "skew_deg": -2.493,
+    "quad_candidates": 1,
+    "quad_candidates_fallback": 1
+  },
+  "timings_ms": {
+    "load": 7.17,
+    "alignment": 318.24,
+    "qty_column": 0.0,
+    "total": 325.44
+  },
+  "errors": [
+    "alignment_failed: no_table_with_grid_found"
+  ],
+  "fields": [
+    {
+      "row_id": 1,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 2,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 3,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 4,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 5,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 6,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 7,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 8,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 9,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    },
+    {
+      "row_id": 10,
+      "field_type": "qty",
+      "bbox_aligned": null,
+      "bbox_original": null,
+      "is_blank": null,
+      "raw_text": null,
+      "normalized_text": null,
+      "value": null,
+      "value_int": null,
+      "confidence": null,
+      "status": "alignment_failed",
+      "needs_review": true,
+      "review_reasons": [
+        "no_table_with_grid_found"
+      ],
+      "preprocessing_variant": null,
+      "crop_path": null,
+      "blank_stats": null,
+      "candidates": []
+    }
+  ]
+}
