@@ -15,3 +15,6 @@ outputs/*
 !outputs/final_scan/
 !outputs/final_photo/
 !outputs/profiles/
+
+# Local copy of model weights (~81 MB) — official weights, re-downloadable; keep out of git
+models/
