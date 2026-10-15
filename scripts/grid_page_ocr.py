@@ -53,6 +53,9 @@ ROTATIONS = {
 }
 FONT_PATHS = ["/System/Library/Fonts/Supplemental/Thonburi.ttc", "/System/Library/Fonts/Helvetica.ttc"]
 CROP_MARGIN_PX = 16  # context kept around each number's ink before detect_blank
+# Every pixel size in this script (kernels, areas, margins, fonts) was set on a 2160 px wide page;
+# pages are resized to this width first so phone photos of any resolution behave the same.
+WORK_WIDTH = 2160
 
 GREEN, ORANGE, RED, GREY = (22, 140, 60), (215, 120, 0), (200, 30, 30), (90, 90, 90)
 
@@ -125,8 +128,12 @@ def ink_mask(flat_bgr: np.ndarray, page: np.ndarray) -> np.ndarray:
     return np.where(keep[lab], 255, 0).astype(np.uint8)
 
 
-def find_numbers(ink: np.ndarray, min_area: int) -> list[tuple[tuple[int, int, int, int], tuple[int, int, int, int]]]:
-    """Merge digits of one number (wide, short kernel); return (group bbox, tight ink bbox)."""
+def find_numbers(ink: np.ndarray, min_area: int,
+                 min_height_ratio: float = 0.4) -> list[tuple[tuple[int, int, int, int], tuple[int, int, int, int]]]:
+    """Merge digits of one number (wide, short kernel); return (group bbox, tight ink bbox).
+
+    Blobs whose ink is much shorter than the typical number (pen dots, specks) are dropped.
+    """
     grp = cv2.dilate(ink, cv2.getStructuringElement(cv2.MORPH_RECT, (41, 15)))
     n, lab, st, _ = cv2.connectedComponentsWithStats(grp)
     out = []
@@ -139,27 +146,70 @@ def find_numbers(ink: np.ndarray, min_area: int) -> list[tuple[tuple[int, int, i
         group = tuple(int(v) for v in st[i, :4])
         tight = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
         out.append((group, tight))
+    if out:
+        med_h = float(np.median([t[3] - t[1] for _, t in out]))
+        out = [(g, t) for g, t in out if t[3] - t[1] >= min_height_ratio * med_h]
     return out
 
 
-def to_grid(found: list, n_cols: int) -> list[Cell]:
-    """Columns by 1-D k-means on x-centre, then rows by y inside each column.
+def to_grid(found: list, tol_ratio: float = 1.0) -> list[Cell]:
+    """Group numbers into rows by walking left/right from neighbour to neighbour.
 
-    Rows on this kind of page are not straight (some rows are squeezed and tilted),
-    so sorting by y globally mixes neighbouring rows; columns are well separated.
+    Hand-written rows are tilted, some are squeezed against the next row, and the
+    columns drift sideways down the page, so neither a global y sort nor x clustering
+    is reliable. Each step predicts where the next number should be from the row's
+    own tilt so far (page-wide tilt at the start) and takes the nearest number to the
+    left/right whose centre is within ``tol_ratio x median ink height`` of that line.
     """
-    cx = np.array([[g[0] + g[2] / 2] for g, _ in found], np.float32)
-    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.1)
-    _, lbl, cent = cv2.kmeans(cx, n_cols, None, crit, 10, cv2.KMEANS_PP_CENTERS)
-    rank = {int(c): i for i, c in enumerate(np.argsort(cent[:, 0]))}
-    cols: list[list] = [[] for _ in range(n_cols)]
-    for item, l in zip(found, lbl[:, 0]):
-        cols[rank[int(l)]].append(item)
-    cells = []
-    for c, items in enumerate(cols):
-        items.sort(key=lambda it: it[0][1] + it[0][3] / 2)
-        cells += [Cell(r + 1, c + 1, g, t) for r, (g, t) in enumerate(items)]
-    return sorted(cells, key=lambda k: (k.row, k.col))
+    items = [(g, t, (t[0] + t[2]) / 2, (t[1] + t[3]) / 2) for g, t in found]
+    med_h = float(np.median([t[3] - t[1] for _, t, _, _ in items]))
+    tol = tol_ratio * med_h
+
+    def nearest_right(i: int) -> int | None:
+        cands = [j for j in range(len(items)) if items[j][2] > items[i][2] and abs(items[j][3] - items[i][3]) <= 0.7 * med_h]
+        return min(cands, key=lambda j: items[j][2] - items[i][2]) if cands else None
+
+    slopes = []
+    for i in range(len(items)):
+        j = nearest_right(i)
+        if j is not None:
+            slopes.append((items[j][3] - items[i][3]) / (items[j][2] - items[i][2]))
+    page_slope = float(np.median(slopes)) if slopes else 0.0
+    left = set(range(len(items)))
+
+    def step(row: list[int], cur: int, direction: int) -> int | None:
+        xs = [items[j][2] for j in row]
+        ys = [items[j][3] for j in row]
+        slope = float(np.polyfit(xs, ys, 1)[0]) if len(row) >= 3 else page_slope
+        cx, cy = items[cur][2], items[cur][3]
+        best, best_cost = None, None
+        for j in left:
+            dx = items[j][2] - cx
+            if dx * direction <= 0:
+                continue
+            resid = abs(items[j][3] - (cy + slope * dx))
+            if resid > tol:
+                continue
+            cost = abs(dx) + 3 * resid
+            if best_cost is None or cost < best_cost:
+                best, best_cost = j, cost
+        return best
+
+    rows: list[list[int]] = []
+    while left:
+        seed = min(left, key=lambda j: items[j][2])  # leftmost remaining number starts a row
+        seed = min((j for j in left if abs(items[j][2] - items[seed][2]) <= 2 * med_h), key=lambda j: items[j][3])
+        left.discard(seed)
+        row = [seed]
+        for direction in (1, -1):
+            cur = seed
+            while (nxt := step(row, cur, direction)) is not None:
+                left.discard(nxt)
+                row.append(nxt)
+                cur = nxt
+        rows.append(sorted(row, key=lambda j: items[j][2]))
+    rows.sort(key=lambda r: float(np.mean([items[j][3] for j in r])))
+    return [Cell(ri + 1, ci + 1, items[j][0], items[j][1]) for ri, r in enumerate(rows) for ci, j in enumerate(r)]
 
 
 # ---------------------------------------------------------------- per-cell system steps
@@ -422,9 +472,11 @@ def main() -> int:
     ap.add_argument("--config", default=str(ROOT / "configs" / "changhouse.yaml"))
     ap.add_argument("--rotate", choices=sorted(ROTATIONS), default="cw",
                     help="rotation that makes the page upright (default: cw)")
-    ap.add_argument("--cols", type=int, default=10, help="number of number-columns on the page")
+    ap.add_argument("--cols", type=int, default=10, help="numbers per row (used to check the grid and number --gt-csv)")
     ap.add_argument("--rows", type=int, default=0, help="expected rows (0 = don't check)")
-    ap.add_argument("--min-area", type=int, default=800, help="smallest merged blob kept (px)")
+    ap.add_argument("--min-area", type=int, default=800, help="smallest merged blob kept (px, at --work-width)")
+    ap.add_argument("--work-width", type=int, default=WORK_WIDTH,
+                    help="resize the upright page to this width before processing (0 = keep size)")
     ap.add_argument("--reading", help="optional JSON with {'rows': [[...], ...]} readings to compare")
     ap.add_argument("--gt-csv", help="verified labels CSV (columns row, label, writer_id); row k = k-th number "
                     "counted left->right, top->bottom")
@@ -446,13 +498,19 @@ def main() -> int:
         return 1
     if ROTATIONS[args.rotate] is not None:
         bgr = cv2.rotate(bgr, ROTATIONS[args.rotate])
+    if args.work_width and bgr.shape[1] != args.work_width:
+        s = args.work_width / bgr.shape[1]
+        print(f"resize page {bgr.shape[1]}x{bgr.shape[0]} -> x{s:.3f}")
+        bgr = cv2.resize(bgr, (args.work_width, round(bgr.shape[0] * s)),
+                         interpolation=cv2.INTER_CUBIC if s > 1 else cv2.INTER_AREA)
 
     flat = flatten_illumination(bgr)
-    cells = to_grid(find_numbers(ink_mask(flat, page_mask(bgr)), args.min_area), args.cols)
-    per_col = [sum(c.col == k + 1 for c in cells) for k in range(args.cols)]
-    print(f"found {len(cells)} numbers; per column: {per_col}")
-    if args.rows and any(n != args.rows for n in per_col):
-        print(f"WARNING: expected {args.rows} rows in every column — check overlay.jpg", file=sys.stderr)
+    cells = to_grid(find_numbers(ink_mask(flat, page_mask(bgr)), args.min_area))
+    n_rows = max(c.row for c in cells)
+    per_row = [sum(c.row == r + 1 for c in cells) for r in range(n_rows)]
+    print(f"found {len(cells)} numbers in {n_rows} rows; per row: {per_row}")
+    if any(n != args.cols for n in per_row) or (args.rows and n_rows != args.rows):
+        print(f"WARNING: expected {args.rows or '?'} rows x {args.cols} numbers — check overlay.jpg", file=sys.stderr)
 
     preps = {(c.row, c.col): prepare(flat, c, cfg) for c in cells}
     images, spans = [], {}
@@ -495,7 +553,8 @@ def main() -> int:
     draw_overlay(bgr, cells, out / "overlay.jpg")
     if gts:
         draw_overlay(bgr, cells, out / "overlay_gt.jpg", use_gt=True)
-    sheets = draw_sheets(cells, preps, out, args.cols, args.rows_per_sheet, threshold, use_gt=bool(gts))
+    sheets = draw_sheets(cells, preps, out, max(c.col for c in cells), args.rows_per_sheet, threshold,
+                         use_gt=bool(gts))
 
     with (out / "results.csv").open("w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
@@ -516,7 +575,7 @@ def main() -> int:
     review = [c for c in cells if c.status != "ok"]
     differ = [c for c in cells if c.differs_from_reading]
     lines = [f"# {Path(args.input).name}", "",
-             f"- numbers found: {len(cells)} (per column {per_col})",
+             f"- numbers found: {len(cells)} in {n_rows} rows (per row {per_row})",
              f"- model: {cfg.ocr.model_name} / {cfg.ocr.engine}, digit-constrained decoding + postprocessing.decide",
              f"- status ok: {len(cells) - len(review)}, needs review / invalid: {len(review)}",
              f"- mean tight-crop score: {np.mean([c.tight_score for c in cells]):.3f} "
