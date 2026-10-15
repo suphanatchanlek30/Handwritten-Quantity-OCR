@@ -18,8 +18,13 @@ Usage:
         --output outputs/IMG_9328_grid --cols 10 --rows 15 \
         --reading data/ground_truth/IMG_9328.claude_reading_unverified.json
 
+    # with verified labels (one row per number, numbered left->right, top->bottom):
+    python scripts/grid_page_ocr.py ... --gt-csv data/ground_truth/real_verified-2.csv --gt-writer data1
+
 Outputs (in --output):
     overlay.jpg            whole page, each number boxed with the system's answer beside it
+    overlay_gt.jpg         (--gt-csv) green = correct, red = wrong with the true value beside it
+    accuracy.md            (--gt-csv) accuracy, wrong-but-ok cells, breakdowns
     sheet_1..N.png         every model input image, large, with answer / score / reading
     crops/rRR_cCC*.png     the exact images given to the model (tight crop, digit segments)
     results.csv / .json    one row per number (an empty ``gt`` column is left for a human)
@@ -71,10 +76,15 @@ class Cell:
     no_flatten_text: str = ""  # reference only: tight crop from the unflattened photo
     no_flatten_score: float = 0.0
     reading: str = ""  # Claude's unverified reading ("?" = unsure); not ground truth
+    gt: str = ""  # verified label from --gt-csv ("" = not given)
 
     @property
     def differs_from_reading(self) -> bool:
         return bool(self.reading) and self.reading.rstrip("?") != self.value
+
+    @property
+    def correct(self) -> bool | None:
+        return None if not self.gt else self.value == self.gt
 
 
 # ---------------------------------------------------------------- segmentation
@@ -224,20 +234,37 @@ def status_color(cell: Cell) -> tuple[int, int, int]:
     return GREEN if cell.status == "ok" else ORANGE
 
 
-def draw_overlay(page_bgr: np.ndarray, cells: list[Cell], path: Path) -> None:
+def gt_color(cell: Cell) -> tuple[int, int, int]:
+    return GREEN if cell.correct else RED
+
+
+def draw_overlay(page_bgr: np.ndarray, cells: list[Cell], path: Path, use_gt: bool = False) -> None:
+    """Status colours (default) or, with use_gt, correct/wrong colours and 'answer (GT x)' on wrong cells."""
     img = Image.fromarray(cv2.cvtColor(page_bgr, cv2.COLOR_BGR2RGB))
     d = ImageDraw.Draw(img)
     f_big, f_small = font(36), font(20)
+    if use_gt:
+        n_ok = sum(bool(c.correct) for c in cells)
+        legend = (f"GREEN = correct ({n_ok})   RED = wrong ({len(cells) - n_ok}): answer above box, GT = true value below   "
+                  f"accuracy {n_ok}/{len(cells)} = {100 * n_ok / len(cells):.1f}%")
+        d.rectangle([10, 4, 30 + d.textlength(legend, font=font(30)), 48], fill=(255, 255, 255))
+        d.text((20, 8), legend, fill=(20, 20, 20), font=font(30))
     for c in cells:
         x0, y0, x1, y1 = c.ink_bbox
-        col = status_color(c)
+        col = gt_color(c) if use_gt else status_color(c)
         d.rectangle([x0 - 6, y0 - 6, x1 + 6, y1 + 6], outline=col, width=5)
         label = c.value or "-"
         tw = d.textlength(label, font=f_big)
         tx, ty = x0 - 6, y0 - 52
         d.rectangle([tx, ty, tx + tw + 12, ty + 44], fill=(255, 255, 255), outline=col, width=3)
         d.text((tx + 6, ty + 1), label, fill=col, font=f_big)
-        d.text((x0 - 4, y1 + 8), f"r{c.row}c{c.col}", fill=GREY, font=f_small)
+        if use_gt and not c.correct:
+            gt_label = f"GT {c.gt}"
+            gw = d.textlength(gt_label, font=font(30))
+            d.rectangle([x0 - 6, y1 + 8, x0 + gw + 6, y1 + 44], fill=(255, 235, 235), outline=RED, width=2)
+            d.text((x0, y1 + 9), gt_label, fill=(150, 0, 0), font=font(30))
+        else:
+            d.text((x0 - 4, y1 + 8), f"r{c.row}c{c.col}", fill=GREY, font=f_small)
     img.save(path, quality=92)
 
 
@@ -249,7 +276,7 @@ def _fit(img_bgr: np.ndarray, max_w: int, max_h: int) -> Image.Image:
 
 
 def draw_sheets(cells: list[Cell], preps: dict[tuple[int, int], Prepared], out_dir: Path,
-                n_cols: int, rows_per_sheet: int, threshold: float) -> list[Path]:
+                n_cols: int, rows_per_sheet: int, threshold: float, use_gt: bool = False) -> list[Path]:
     tile_w, img_h, seg_h, text_h, gap = 340, 140, 56, 160, 14
     tile_h = img_h + seg_h + text_h
     f_head, f_pred, f_small, f_tiny = font(24), font(46), font(23), font(20)
@@ -266,16 +293,22 @@ def draw_sheets(cells: list[Cell], preps: dict[tuple[int, int], Prepared], out_d
         d = ImageDraw.Draw(sheet)
         d.text((gap, 12), f"Rows {chunk[0]}-{chunk[-1]}.  Top image = tight crop fed to the model; small strip = "
                f"digit segments fed one by one (only when >= 2 ink groups).", fill=(30, 30, 30), font=f_small)
-        d.text((gap, 50), f"Big number = system answer (score).  GREEN = ok, ORANGE = needs review "
-               f"(score < {threshold}, digits disagree, ...).  Claude = Claude's UNVERIFIED reading, red when it "
-               f"differs.", fill=(30, 30, 30), font=f_small)
+        if use_gt:
+            d.text((gap, 50), f"Big number = system answer (score).  GREEN border = correct, RED = wrong.  "
+                   f"GT = verified true value.  status: ok / REVIEW (system asks a human to check: score < "
+                   f"{threshold}, digits disagree, ...)", fill=(30, 30, 30), font=f_small)
+        else:
+            d.text((gap, 50), f"Big number = system answer (score).  GREEN = ok, ORANGE = needs review "
+                   f"(score < {threshold}, digits disagree, ...).  Claude = Claude's UNVERIFIED reading, red when "
+                   f"it differs.", fill=(30, 30, 30), font=f_small)
         for ri, r in enumerate(chunk):
             for c in sorted(by_row[r], key=lambda k: k.col):
                 p = preps[(c.row, c.col)]
                 x = gap + (c.col - 1) * (tile_w + gap)
                 y = 100 + ri * (tile_h + gap)
-                col = status_color(c)
-                d.rectangle([x, y, x + tile_w, y + tile_h], fill=(255, 255, 255), outline=col, width=4)
+                col = gt_color(c) if use_gt else status_color(c)
+                d.rectangle([x, y, x + tile_w, y + tile_h], fill=(255, 255, 255), outline=col,
+                            width=6 if use_gt and not c.correct else 4)
                 if p.tight is not None:
                     pil = _fit(p.tight, tile_w - 12, img_h - 10)
                     sheet.paste(pil, (x + (tile_w - pil.width) // 2, y + 5 + (img_h - 10 - pil.height) // 2))
@@ -298,13 +331,87 @@ def draw_sheets(cells: list[Cell], preps: dict[tuple[int, int], Prepared], out_d
                 if c.segments_text:
                     detail += f" | seg {c.segments_text}"
                 d.text((x + 10, ty + 84), detail, fill=GREY, font=f_tiny)
-                if c.reading:
+                if use_gt:
+                    d.text((x + 10, ty + 112), f"GT: {c.gt}", font=f_small, fill=(30, 30, 30))
+                    d.text((x + 120, ty + 112), "correct" if c.correct else "WRONG", font=f_small, fill=col)
+                    d.text((x + 230, ty + 112), "ok" if c.status == "ok" else "REVIEW", font=f_small,
+                           fill=GREEN if c.status == "ok" else ORANGE)
+                elif c.reading:
                     d.text((x + 10, ty + 112), f"Claude: {c.reading}", font=f_small,
                            fill=RED if c.differs_from_reading else (30, 30, 30))
         path = out_dir / f"sheet_{s // rows_per_sheet + 1}.png"
         sheet.save(path)
         paths.append(path)
     return paths
+
+
+# ---------------------------------------------------------------- ground truth
+def load_gt_csv(path: Path, writer: str | None, n_cols: int) -> dict[tuple[int, int], str]:
+    """Labels numbered 1..N left->right, top->bottom -> {(row, col): label}. Only 'verified' rows."""
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    writers = sorted({r.get("writer_id", "") for r in rows})
+    if writer is None and len(writers) > 1:
+        raise SystemExit(f"--gt-csv holds several pages {writers}; pick one with --gt-writer")
+    rows = [r for r in rows if writer is None or r.get("writer_id") == writer]
+    if not rows:
+        raise SystemExit(f"no rows for writer {writer!r} in {path} (have {writers})")
+    bad = [r["row"] for r in rows if r.get("status", "verified") != "verified"]
+    if bad:
+        raise SystemExit(f"unverified labels in {path}: rows {bad[:10]} — accuracy needs verified labels")
+    out = {}
+    for r in rows:
+        k = int(r["row"]) - 1
+        out[(k // n_cols + 1, k % n_cols + 1)] = r["label"].strip()
+    return out
+
+
+def accuracy_report(cells: list[Cell], image: str, gt_path: str, writer: str | None, threshold: float) -> str:
+    from qty_ocr.evaluation import levenshtein
+
+    n = len(cells)
+    right = [c for c in cells if c.correct]
+    ok = [c for c in cells if c.status == "ok"]
+    ok_right = [c for c in ok if c.correct]
+    rev = [c for c in cells if c.status != "ok"]
+    wrong_ok = [c for c in ok if not c.correct]
+    chars = sum(len(c.gt) for c in cells)
+    edits = sum(levenshtein(c.value, c.gt) for c in cells)
+    tight_right = sum(c.tight_text == c.gt for c in cells)
+    noflat_right = sum(c.no_flatten_text == c.gt for c in cells)
+    pct = lambda a, b: f"{a}/{b} = {100 * a / b:.1f}%" if b else "-"  # noqa: E731
+    mean = lambda xs: f"{np.mean(xs):.3f}" if xs else "-"  # noqa: E731
+    lines = [f"# Accuracy — {image}", "",
+             f"Ground truth: `{gt_path}`" + (f" (writer_id = {writer})" if writer else "") +
+             " — verified labels, numbered left->right, top->bottom", "",
+             "| metric | value |", "|---|---|",
+             f"| **exact-match accuracy (whole number)** | **{pct(len(right), n)}** |",
+             f"| digit-level accuracy (1 - CER) | {pct(chars - edits, chars)} |",
+             f"| status ok | {len(ok)} — of which correct {pct(len(ok_right), len(ok))} |",
+             f"| status needs_review | {len(rev)} — of which correct {pct(sum(bool(c.correct) for c in rev), len(rev))} |",
+             f"| **wrong but status ok (not flagged)** | **{len(wrong_ok)}** |",
+             f"| accuracy if a human fixes every flagged cell | {pct(n - len(wrong_ok), n)} |",
+             f"| mean confidence: correct / wrong | {mean([c.confidence for c in right])} / "
+             f"{mean([c.confidence for c in cells if not c.correct])} |", "",
+             "Same crops, simpler settings (to show what each step adds):", "",
+             "| setting | exact-match |", "|---|---|",
+             f"| tight crop from the photo, no flattening | {pct(noflat_right, n)} |",
+             f"| tight crop, lighting flattened | {pct(tight_right, n)} |",
+             f"| + digit_segments + decide (= system answer) | {pct(len(right), n)} |", "",
+             "By number of digits:", "", "| digits | correct |", "|---|---|"]
+    for k in sorted({len(c.gt) for c in cells}):
+        grp = [c for c in cells if len(c.gt) == k]
+        lines.append(f"| {k} | {pct(sum(bool(c.correct) for c in grp), len(grp))} |")
+    lines += ["", f"## Wrong but status ok ({len(wrong_ok)}) — the system did not ask for review", "",
+              "| cell | answer | GT | conf | reasons |", "|---|---|---|---|---|"]
+    lines += [f"| r{c.row}c{c.col} | {c.value} | {c.gt} | {c.confidence:.2f} | {'; '.join(c.reasons)} |"
+              for c in wrong_ok]
+    wrong = [c for c in cells if not c.correct]
+    lines += ["", f"## Wrong ({len(wrong)})", "", "| cell | answer | GT | status | conf | tight | segments |",
+              "|---|---|---|---|---|---|---|"]
+    lines += [f"| r{c.row}c{c.col} | {c.value or '-'} | {c.gt} | {c.status} | {c.confidence:.2f} | "
+              f"{c.tight_text} | {c.segments_text} |" for c in wrong]
+    return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------- main
@@ -319,6 +426,9 @@ def main() -> int:
     ap.add_argument("--rows", type=int, default=0, help="expected rows (0 = don't check)")
     ap.add_argument("--min-area", type=int, default=800, help="smallest merged blob kept (px)")
     ap.add_argument("--reading", help="optional JSON with {'rows': [[...], ...]} readings to compare")
+    ap.add_argument("--gt-csv", help="verified labels CSV (columns row, label, writer_id); row k = k-th number "
+                    "counted left->right, top->bottom")
+    ap.add_argument("--gt-writer", help="writer_id to take from --gt-csv when it holds several pages")
     ap.add_argument("--rows-per-sheet", type=int, default=5)
     args = ap.parse_args()
 
@@ -366,27 +476,38 @@ def main() -> int:
     if args.reading:
         data = json.loads(Path(args.reading).read_text(encoding="utf-8"))
         readings = {(r + 1, c + 1): v for r, row in enumerate(data["rows"]) for c, v in enumerate(row)}
+    gts: dict[tuple[int, int], str] = {}
+    if args.gt_csv:
+        gts = load_gt_csv(Path(args.gt_csv), args.gt_writer, args.cols)
+        missing = [f"r{c.row}c{c.col}" for c in cells if (c.row, c.col) not in gts]
+        if missing or len(gts) != len(cells):
+            print(f"ERROR: {len(gts)} labels for {len(cells)} numbers; unlabeled: {missing[:10]}", file=sys.stderr)
+            return 1
     for c, rf in zip(cells, ref):
         k = (c.row, c.col)
         a, b = spans[k]
         decide_cell(c, preps[k], raws[a:b], cfg)
         c.no_flatten_text, c.no_flatten_score = rf.digit_text or "", float(rf.digit_score or 0.0)
         c.reading = readings.get(k, "")
+        c.gt = gts.get(k, "")
 
     threshold = cfg.ocr.confidence_review_threshold
     draw_overlay(bgr, cells, out / "overlay.jpg")
-    sheets = draw_sheets(cells, preps, out, args.cols, args.rows_per_sheet, threshold)
+    if gts:
+        draw_overlay(bgr, cells, out / "overlay_gt.jpg", use_gt=True)
+    sheets = draw_sheets(cells, preps, out, args.cols, args.rows_per_sheet, threshold, use_gt=bool(gts))
 
     with (out / "results.csv").open("w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
         w.writerow(["row", "col", "value", "status", "confidence", "review_reasons", "tight_text", "tight_score",
                     "tight_raw", "segments_text", "ink_groups", "no_flatten_text", "no_flatten_score",
-                    "claude_reading_unverified", "ink_bbox_x0y0x1y1", "crop", "gt"])
+                    "claude_reading_unverified", "ink_bbox_x0y0x1y1", "crop", "gt", "correct"])
         for c in cells:
             w.writerow([c.row, c.col, c.value, c.status, f"{c.confidence:.4f}", " | ".join(c.reasons),
                         c.tight_text, f"{c.tight_score:.4f}", c.tight_raw, c.segments_text, c.ink_groups,
                         c.no_flatten_text, f"{c.no_flatten_score:.4f}", c.reading,
-                        " ".join(map(str, c.ink_bbox)), f"crops/r{c.row:02d}_c{c.col:02d}.png", ""])
+                        " ".join(map(str, c.ink_bbox)), f"crops/r{c.row:02d}_c{c.col:02d}.png", c.gt,
+                        "" if c.correct is None else int(c.correct)])
     (out / "results.json").write_text(json.dumps(
         {"image": str(args.input), "rotate": args.rotate, "model": cfg.ocr.model_name, "engine": cfg.ocr.engine,
          "confidence_review_threshold": threshold, "cells": [asdict(c) for c in cells]},
@@ -401,7 +522,8 @@ def main() -> int:
              f"- mean tight-crop score: {np.mean([c.tight_score for c in cells]):.3f} "
              f"(same crops without flattening: {np.mean([c.no_flatten_score for c in cells]):.3f})",
              f"- differs from Claude's unverified reading: {len(differ)} "
-             f"(of which status ok: {sum(c.status == 'ok' for c in differ)})", "",
+             f"(of which status ok: {sum(c.status == 'ok' for c in differ)})" if readings else
+             "- Claude's reading: not given (--reading)", "",
              "## Cells to check (status != ok, or differs from Claude's reading)", "",
              "| cell | answer | status | conf | tight | segments | Claude (unverified) | reasons |",
              "|---|---|---|---|---|---|---|---|"]
@@ -411,6 +533,10 @@ def main() -> int:
     (out / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print("\n".join(lines[:7]))
+    if gts:
+        acc = accuracy_report(cells, Path(args.input).name, args.gt_csv, args.gt_writer, threshold)
+        (out / "accuracy.md").write_text(acc, encoding="utf-8")
+        print(acc.split("## Wrong")[0])
     print(f"wrote {out / 'overlay.jpg'}, {len(sheets)} sheets, results.csv/json, summary.md")
     return 0
 

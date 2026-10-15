@@ -9,7 +9,7 @@
 
 > **สถานะ:** prototype ที่ใช้งานได้จริง ยังไม่ใช่ production
 > ภาพสแกน 21 ใบ: ถูก 205/210 ช่อง และ**ไม่มีช่องที่ผิดแต่ระบบบอกว่า `ok`** — ช่องที่ผิดถูก flag ให้คนตรวจทั้งหมด
-> ยังไม่เคยทดสอบ**ใบสั่งสินค้า**ที่ถ่ายด้วยมือถือจริง (ทดสอบแค่ภาพจำลอง) — มีภาพถ่ายจริง 1 ใบที่เป็นกระดาษเปล่าเขียนตัวเลข 150 ตัว
+> ยังไม่เคยทดสอบ**ใบสั่งสินค้า**ที่ถ่ายด้วยมือถือจริง (ทดสอบแค่ภาพจำลอง) — มีภาพถ่ายจริง 1 ใบที่เป็นกระดาษเปล่าเขียนตัวเลข 150 ตัว ถูก 64.0% เทียบเฉลยจริง
 > (ดู [อ่านหน้ากระดาษเปล่าที่มีตัวเลขหลายตัว](#อ่านหน้ากระดาษเปล่าที่มีตัวเลขหลายตัว-scriptsgrid_page_ocrpy)) — ดูหัวข้อ [ข้อจำกัด](#10-ข้อจำกัด-และสิ่งที่ยังไม่ได้ทำ)
 
 ---
@@ -37,6 +37,7 @@
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | โครงสร้างระบบ, แต่ละโมดูลทำอะไร, ข้อตกลงที่ใช้ทั้งระบบ |
 | [`docs/BENCHMARK.md`](docs/BENCHMARK.md) | ผลการทดลองจริงทั้งหมด + สิ่งที่ลองแล้วไม่ได้ผล |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | เจอปัญหา — จัดตามอาการ |
+| [`docs/COST_ESTIMATE.md`](docs/COST_ESTIMATE.md) | spec ขั้นต่ำ, CPU vs GPU ไหวกี่รูป, ค่าเช่า cloud, ค่าใช้จ่ายต่อรูป เทียบกับ ChatGPT/Gemini |
 | [`PLAN.md`](PLAN.md) | ประวัติการพัฒนาทีละขั้น (M0–M9) |
 
 ---
@@ -147,7 +148,9 @@ handwritten-qty-ocr/
 │   └── ground_truth/            ค่าเฉลยสำหรับวัดผล
 │       ├── annotations.user_confirmed.json  ✔ example.jpg — ผู้ใช้ยืนยันค่าแล้ว (verified)
 │       ├── annotations.draft.json           ✎ arm-1..20 + example — agent ถอดเอง, ยังไม่มีคนตรวจ
-│       ├── IMG_9328.claude_reading_unverified.json  ✎ หน้ากระดาษเปล่า 150 ตัว — agent อ่านเอง ("?" = ไม่แน่ใจ), ยังไม่มีคนตรวจ, ไม่ใช่เฉลย
+│       ├── real_verified-2.csv              ✔ เฉลยจริงจากเจ้าของ: IMG_9328 (writer data1, 150 ตัว) + หน้า Mind (154 ตัว)
+│       ├── annotations-2.csv, labels_to_fill-2.csv  สำเนาไฟล์เดียวกับ real_verified-2.csv (เนื้อหาเหมือนกันทุกไบต์)
+│       ├── IMG_9328.claude_reading_unverified.json  ✎ หน้ากระดาษเปล่า 150 ตัว — agent อ่านเอง, ไม่ใช่เฉลย (ใช้ real_verified-2.csv แทน)
 │       └── annotations.example.json         ตัวอย่าง format เท่านั้น (ค่าสมมติ)
 │
 ├── docs/
@@ -218,7 +221,7 @@ handwritten-qty-ocr/
 |---|---|---|
 | ภาพทดสอบ 20 ใบ (`arm-1.jpg` … `arm-20.jpg`) | `../Data Test/` (โฟลเดอร์ข้างๆ โปรเจกต์) | วัดผล, batch, สร้างภาพจำลอง |
 | ภาพฟอร์มใหม่ (มีคอลัมน์ No.) | `../Data Test/test/example.jpg` | ทดสอบฟอร์มคนละแบบ — ค่าเฉลยยืนยันโดยผู้ใช้แล้ว |
-| ภาพถ่ายมือถือจริง: กระดาษเปล่าเขียนตัวเลข 150 ตัว (ถ่ายตะแคง) | `../Data Test/test-1-page/IMG_9328.jpg` | ทดสอบ `scripts/grid_page_ocr.py` — ยังไม่มีเฉลยที่คนยืนยัน |
+| ภาพถ่ายมือถือจริง: กระดาษเปล่าเขียนตัวเลข 150 ตัว (ถ่ายตะแคง) | `../Data Test/test-1-page/IMG_9328.jpg` | ทดสอบ `scripts/grid_page_ocr.py` — เฉลยจริงอยู่ใน `data/ground_truth/real_verified-2.csv` (writer `data1`) |
 | โมเดล | `~/.paddlex/official_models/` | ดูหัวข้อ 3 |
 | Python environment | `.venv/` (ในโปรเจกต์แต่ไม่ควร copy ข้ามเครื่อง) | สร้างใหม่ด้วย `setup_mac.sh` |
 
@@ -248,7 +251,7 @@ handwritten-qty-ocr/
 | `python scripts/profile_pipeline.py --inputs FOLDER --repeat 3` | วัดเวลาแต่ละขั้น / RAM |
 | `python scripts/compare_results.py OLD_DIR NEW_DIR` | เทียบผลสองชุดทีละช่อง (exit 0 = เหมือนกัน) |
 | `python scripts/simulate_photos.py --input "../Data Test" --output data/simulated_photos` | สร้างภาพถ่ายจำลองใหม่ |
-| `python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/IMG_9328.jpg" --output outputs/IMG_9328_grid --cols 10 --rows 15 --reading data/ground_truth/IMG_9328.claude_reading_unverified.json` | หน้ากระดาษเปล่าที่เขียนตัวเลขหลายตัว: ตัดทีละตัว → อ่าน → ภาพสรุปทุกตัว (ดูหัวข้อ 6) |
+| `python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/IMG_9328.jpg" --output outputs/IMG_9328_grid --cols 10 --rows 15 --gt-csv data/ground_truth/real_verified-2.csv --gt-writer data1` | หน้ากระดาษเปล่าที่เขียนตัวเลขหลายตัว: ตัดทีละตัว → อ่าน → ภาพสรุปทุกตัว (ดูหัวข้อ 6) |
 | `... run/batch ... --device gpu` | ใช้ NVIDIA GPU (ดูหัวข้อ 11); `--device auto` = ใช้ GPU ถ้ามี |
 | `python -m pytest -q` | รัน tests ทั้งหมด |
 
@@ -309,23 +312,39 @@ outputs/run_001/
 ```text
 sheet_1..N.png      ★ ทุกตัวเลข (5 แถว/แผ่น): ภาพที่ส่งเข้าโมเดลจริง + ภาพทีละหลัก + คำตอบ (score)
                        เขียว=ok  ส้ม=ควรตรวจ  บรรทัด "Claude:" = ค่าที่ agent อ่านเอง (แดงเมื่อไม่ตรง)
+                       (เมื่อใส่ --gt-csv: เขียว=ถูก แดง=ผิด + บรรทัด GT / correct-WRONG / ok-REVIEW)
 overlay.jpg         ★ ทั้งหน้า: กรอบรอบตัวเลข + คำตอบเหนือแต่ละตัว + ป้าย rXcY
-results.csv         1 แถวต่อตัวเลข: value, status, confidence, review_reasons, ผล tight/segments, ... + คอลัมน์ gt (ว่าง ให้คนกรอก)
+overlay_gt.jpg      (--gt-csv) ทั้งหน้า: เขียว=ถูก แดง=ผิด, ค่าจริงอยู่ใต้กรอบ
+accuracy.md         (--gt-csv) ความแม่นยำ, ช่องที่ผิดแต่ได้ ok, แยกตามจำนวนหลัก, รายการช่องที่ผิดทั้งหมด
+results.csv         1 แถวต่อตัวเลข: value, status, confidence, review_reasons, ผล tight/segments, ... + คอลัมน์ gt / correct
 results.json        ผลเต็มทุกตัว
 summary.md          สรุป + ตารางตัวที่ต้องตรวจพร้อมเหตุผล
 crops/              ภาพที่ส่งเข้าโมเดลจริง (rRR_cCC.png, rRR_cCC_segK.png)
 ```
 
-ผลบน `IMG_9328.jpg` (150 ตัว, 2026-10-15) — **ยังไม่มีเฉลยที่คนยืนยัน จึงยังไม่มีตัวเลขความแม่นยำ**:
+**วัดกับเฉลยจริง:** ใส่ `--gt-csv data/ground_truth/real_verified-2.csv --gt-writer data1` ระบบจะเพิ่ม
+`overlay_gt.jpg` (เขียว=ถูก, แดง=ผิด, ใต้กรอบคือค่าจริง), `accuracy.md` และคอลัมน์ `gt`/`correct` ใน `results.csv`
+(เฉลยนับลำดับจากซ้ายไปขวา บนลงล่าง ใช้เฉพาะแถวที่ `status = verified`)
 
-| ขั้น | score เฉลี่ย (tight_crop) | ตรงกับที่ agent อ่านเอง* |
-|---|---:|---:|
-| ตัดจากภาพถ่ายตรงๆ | 0.477 | 42/150 |
-| + ปรับแสงให้กระดาษขาว | 0.711 | 82/150 |
-| + ขั้นตัดสินของ pipeline หลัก (digit_segments + decide) | — | 100/150 |
+ผลบน `IMG_9328.jpg` (150 ตัว, 2026-10-15) เทียบกับเฉลยจริงจากเจ้าของ (`real_verified-2.csv`, writer `data1`):
 
-\* เทียบกับ `IMG_9328.claude_reading_unverified.json` ซึ่ง agent อ่านเอง **ไม่ใช่ความแม่นยำ**; ทดลองบนภาพนี้ภาพเดียว (in-sample)
-สถานะ: `ok` 55 / `needs_review` 95 — ใน 55 ตัวที่ `ok` มี 2 ตัวที่ไม่ตรงกับที่ agent อ่าน (r1c1 = 20 vs 70, r13c7 = 381 vs 321) รอคนตรวจ
+| ตัวชี้วัด | ผล |
+|---|---|
+| **อ่านถูกทั้งตัวเลข** | **96/150 = 64.0%** |
+| อ่านถูกรายหลัก (1 − CER) | 283/347 = 81.6% |
+| สถานะ `ok` | 55 ตัว — ถูก 50 (90.9%) |
+| สถานะ `needs_review` | 95 ตัว — ถูก 46 (48.4%) |
+| **ผิดแต่ได้ `ok`** | **5** (r1c1 20→70, r1c5 790→740, r9c3 949→948, r13c1 974→474, r13c7 381→321) |
+| ถ้าคนแก้ทุกช่องที่ระบบเตือน | 145/150 = 96.7% |
+
+| ขั้น | ถูก |
+|---|---:|
+| ตัดจากภาพถ่ายตรงๆ | 26.0% |
+| + ปรับแสงให้กระดาษขาว | 55.3% |
+| + ขั้นตัดสินของ pipeline หลัก (digit_segments + decide) | 64.0% |
+
+สาเหตุผิดหลัก: ผู้เขียนเขียน **เลข 4 คล้าย 9** (40→90, 474→974), เลข 2 มีห่วง, เลข 1 ติดกับเลขข้างๆ (21→2)
+ทดลองบนภาพนี้ภาพเดียว (in-sample) — ใน CSV ยังมีเฉลยของอีกหน้า (writer `Mind`, 154 ตัว) ที่ยังไม่ได้รัน
 ลองเพิ่ม padding / บังคับความกว้างขั้นต่ำแล้ว แย่ลง → ใช้ `tight_crop_padding_ratio: 0.35` เดิม
 
 ---
@@ -431,7 +450,7 @@ crops/              ภาพที่ส่งเข้าโมเดลจร
 1. ทดสอบกับ**ภาพถ่ายใบสั่งสินค้าจริง**จากหลายคน หลายมุม — และเพิ่มขั้นปรับแสงเข้า pipeline หลัก
    (ต้องตรวจด้วย `compare_results.py` ว่าผลบนภาพสแกนเดิมไม่เปลี่ยน)
 2. ให้คนตรวจ `data/ground_truth/annotations.draft.json` แล้วตั้ง `"verified": true`
-   และกรอกคอลัมน์ `gt` ใน `outputs/IMG_9328_grid/results.csv` เพื่อวัดความแม่นยำจริงของภาพถ่าย
+   และรันหน้า `Mind` (เฉลยอยู่ใน `real_verified-2.csv` แล้ว) เพื่อวัดภาพถ่ายจริงมากกว่า 1 หน้า
 3. ปรับ `confidence_review_threshold` จากข้อมูลจริงเพื่อลดจำนวนช่องที่ต้อง review (~20%)
 4. Fine-tune โมเดลสำหรับเลข 1 หัวงอ — **เริ่มแล้วผู้ใช้ยกเลิก** ไฟล์ที่เกี่ยวข้องลบหมดแล้ว
    ถ้าจะทำต่อ ต้องมีใบสั่งสินค้าจริงที่เขียนเลข 1 หัวงอและเลข 7 ด้วยลายมือจริงก่อน (ตอนนี้มีตัวอย่างจริงแค่ 1 ตัว)
