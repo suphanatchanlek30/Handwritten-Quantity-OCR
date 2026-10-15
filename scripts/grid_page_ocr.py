@@ -288,33 +288,65 @@ def gt_color(cell: Cell) -> tuple[int, int, int]:
     return GREEN if cell.correct else RED
 
 
-def draw_overlay(page_bgr: np.ndarray, cells: list[Cell], path: Path, use_gt: bool = False) -> None:
-    """Status colours (default) or, with use_gt, correct/wrong colours and 'answer (GT x)' on wrong cells."""
-    img = Image.fromarray(cv2.cvtColor(page_bgr, cv2.COLOR_BGR2RGB))
-    d = ImageDraw.Draw(img)
-    f_big, f_small = font(36), font(20)
+def draw_overlay(page_bgr: np.ndarray, cells: list[Cell], path: Path, use_gt: bool = False,
+                 draft_gt: bool = False) -> None:
+    """Status colours (default) or, with use_gt, correct/wrong colours with the true value under wrong cells.
+
+    Label size follows the handwriting (median ink height and row spacing) so labels on a
+    tightly written page do not cover the row above; the legend sits in a band above the page.
+    """
+    med_h = float(np.median([c.ink_bbox[3] - c.ink_bbox[1] for c in cells]))
+    row_y = [float(np.mean([(c.ink_bbox[1] + c.ink_bbox[3]) / 2 for c in cells if c.row == r]))
+             for r in sorted({c.row for c in cells})]
+    row_gap = float(np.median(np.diff(row_y))) if len(row_y) > 1 else 3 * med_h
+    fs = int(max(18, min(36, 0.8 * med_h, 0.38 * row_gap)))
+    f_big, f_small, f_gt = font(fs), font(max(14, int(fs * 0.55))), font(max(16, int(fs * 0.8)))
+
+    page = Image.fromarray(cv2.cvtColor(page_bgr, cv2.COLOR_BGR2RGB))
     if use_gt:
         n_ok = sum(bool(c.correct) for c in cells)
-        legend = (f"GREEN = correct ({n_ok})   RED = wrong ({len(cells) - n_ok}): answer above box, GT = true value below   "
-                  f"accuracy {n_ok}/{len(cells)} = {100 * n_ok / len(cells):.1f}%")
-        d.rectangle([10, 4, 30 + d.textlength(legend, font=font(30)), 48], fill=(255, 255, 255))
-        d.text((20, 8), legend, fill=(20, 20, 20), font=font(30))
+        legend = (f"GREEN = correct ({n_ok})   RED = wrong ({len(cells) - n_ok}): answer above box, GT = true value "
+                  f"below   accuracy {n_ok}/{len(cells)} = {100 * n_ok / len(cells):.1f}%"
+                  + ("   [DRAFT GT by Claude - not verified]" if draft_gt else ""))
+    else:
+        n_ok = sum(c.status == "ok" for c in cells)
+        legend = f"GREEN = ok ({n_ok})   ORANGE = needs review ({len(cells) - n_ok})   number above box = model answer"
+    # legend parts are separated by 3 spaces; wrap them so nothing runs off the page
+    f_leg, lines = font(30), [""]
+    measure = ImageDraw.Draw(page)
+    for part in legend.split("   "):
+        trial = f"{lines[-1]}   {part}" if lines[-1] else part
+        if lines[-1] and measure.textlength(trial, font=f_leg) > page.width - 32:
+            lines.append(part)
+        else:
+            lines[-1] = trial
+    band = 20 + 40 * len(lines)
+    img = Image.new("RGB", (page.width, page.height + band), (255, 255, 255))
+    img.paste(page, (0, band))
+    d = ImageDraw.Draw(img)
+    for i, line in enumerate(lines):
+        d.text((16, 10 + 40 * i), line, fill=(20, 20, 20), font=f_leg)
     for c in cells:
         x0, y0, x1, y1 = c.ink_bbox
+        y0, y1 = y0 + band, y1 + band
         col = gt_color(c) if use_gt else status_color(c)
-        d.rectangle([x0 - 6, y0 - 6, x1 + 6, y1 + 6], outline=col, width=5)
+        d.rectangle([x0 - 5, y0 - 5, x1 + 5, y1 + 5], outline=col, width=4)
         label = c.value or "-"
         tw = d.textlength(label, font=f_big)
-        tx, ty = x0 - 6, y0 - 52
-        d.rectangle([tx, ty, tx + tw + 12, ty + 44], fill=(255, 255, 255), outline=col, width=3)
-        d.text((tx + 6, ty + 1), label, fill=col, font=f_big)
-        if use_gt and not c.correct:
-            gt_label = f"GT {c.gt}"
-            gw = d.textlength(gt_label, font=font(30))
-            d.rectangle([x0 - 6, y1 + 8, x0 + gw + 6, y1 + 44], fill=(255, 235, 235), outline=RED, width=2)
-            d.text((x0, y1 + 9), gt_label, fill=(150, 0, 0), font=font(30))
-        else:
-            d.text((x0 - 4, y1 + 8), f"r{c.row}c{c.col}", fill=GREY, font=f_small)
+        tx, ty = x0 - 5, y0 - fs - 14
+        d.rectangle([tx, ty, tx + tw + 10, ty + fs + 8], fill=(255, 255, 255), outline=col, width=3)
+        d.text((tx + 5, ty + 1), label, fill=col, font=f_big)
+        if not (use_gt and not c.correct):
+            d.text((x0 - 4, y1 + 7), f"r{c.row}c{c.col}", fill=GREY, font=f_small)
+    for c in cells if use_gt else []:  # true values last, so no other label covers them
+        if c.correct:
+            continue
+        x0, y1 = c.ink_bbox[0], c.ink_bbox[3] + band
+        gt_label = f"GT {c.gt}"
+        gw = d.textlength(gt_label, font=f_gt)
+        gh = int(fs * 0.8) + 6
+        d.rectangle([x0 - 5, y1 + 7, x0 + gw + 5, y1 + 7 + gh], fill=(255, 235, 235), outline=RED, width=2)
+        d.text((x0, y1 + 8), gt_label, fill=(150, 0, 0), font=f_gt)
     img.save(path, quality=92)
 
 
@@ -396,8 +428,12 @@ def draw_sheets(cells: list[Cell], preps: dict[tuple[int, int], Prepared], out_d
 
 
 # ---------------------------------------------------------------- ground truth
-def load_gt_csv(path: Path, writer: str | None, n_cols: int) -> dict[tuple[int, int], str]:
-    """Labels numbered 1..N left->right, top->bottom -> {(row, col): label}. Only 'verified' rows."""
+def load_gt_csv(path: Path, writer: str | None, n_cols: int,
+                allow_draft: bool = False) -> tuple[dict[tuple[int, int], str], bool]:
+    """Labels numbered 1..N left->right, top->bottom -> ({(row, col): label}, is_draft).
+
+    Only 'verified' rows unless allow_draft; is_draft tells the caller to mark every output.
+    """
     with path.open(encoding="utf-8-sig", newline="") as fh:
         rows = list(csv.DictReader(fh))
     writers = sorted({r.get("writer_id", "") for r in rows})
@@ -407,16 +443,18 @@ def load_gt_csv(path: Path, writer: str | None, n_cols: int) -> dict[tuple[int, 
     if not rows:
         raise SystemExit(f"no rows for writer {writer!r} in {path} (have {writers})")
     bad = [r["row"] for r in rows if r.get("status", "verified") != "verified"]
-    if bad:
-        raise SystemExit(f"unverified labels in {path}: rows {bad[:10]} — accuracy needs verified labels")
+    if bad and not allow_draft:
+        raise SystemExit(f"unverified labels in {path}: rows {bad[:10]} — accuracy needs verified labels "
+                         "(--allow-draft-gt to measure against a draft, clearly marked)")
     out = {}
     for r in rows:
         k = int(r["row"]) - 1
         out[(k // n_cols + 1, k % n_cols + 1)] = r["label"].strip()
-    return out
+    return out, bool(bad)
 
 
-def accuracy_report(cells: list[Cell], image: str, gt_path: str, writer: str | None, threshold: float) -> str:
+def accuracy_report(cells: list[Cell], image: str, gt_path: str, writer: str | None, threshold: float,
+                    draft: bool = False) -> str:
     from qty_ocr.evaluation import levenshtein
 
     n = len(cells)
@@ -433,7 +471,8 @@ def accuracy_report(cells: list[Cell], image: str, gt_path: str, writer: str | N
     mean = lambda xs: f"{np.mean(xs):.3f}" if xs else "-"  # noqa: E731
     lines = [f"# Accuracy — {image}", "",
              f"Ground truth: `{gt_path}`" + (f" (writer_id = {writer})" if writer else "") +
-             " — verified labels, numbered left->right, top->bottom", "",
+             (" — **DRAFT labels (not verified by the owner) — not a confirmed accuracy**" if draft else
+              " — verified labels") + ", numbered left->right, top->bottom", "",
              "| metric | value |", "|---|---|",
              f"| **exact-match accuracy (whole number)** | **{pct(len(right), n)}** |",
              f"| digit-level accuracy (1 - CER) | {pct(chars - edits, chars)} |",
@@ -481,6 +520,9 @@ def main() -> int:
     ap.add_argument("--gt-csv", help="verified labels CSV (columns row, label, writer_id); row k = k-th number "
                     "counted left->right, top->bottom")
     ap.add_argument("--gt-writer", help="writer_id to take from --gt-csv when it holds several pages")
+    ap.add_argument("--allow-draft-gt", action="store_true",
+                    help="accept labels whose status is not 'verified' (e.g. claude_draft); every report "
+                         "and overlay is then marked DRAFT GT")
     ap.add_argument("--rows-per-sheet", type=int, default=5)
     args = ap.parse_args()
 
@@ -535,8 +577,9 @@ def main() -> int:
         data = json.loads(Path(args.reading).read_text(encoding="utf-8"))
         readings = {(r + 1, c + 1): v for r, row in enumerate(data["rows"]) for c, v in enumerate(row)}
     gts: dict[tuple[int, int], str] = {}
+    draft_gt = False
     if args.gt_csv:
-        gts = load_gt_csv(Path(args.gt_csv), args.gt_writer, args.cols)
+        gts, draft_gt = load_gt_csv(Path(args.gt_csv), args.gt_writer, args.cols, args.allow_draft_gt)
         missing = [f"r{c.row}c{c.col}" for c in cells if (c.row, c.col) not in gts]
         if missing or len(gts) != len(cells):
             print(f"ERROR: {len(gts)} labels for {len(cells)} numbers; unlabeled: {missing[:10]}", file=sys.stderr)
@@ -552,7 +595,7 @@ def main() -> int:
     threshold = cfg.ocr.confidence_review_threshold
     draw_overlay(bgr, cells, out / "overlay.jpg")
     if gts:
-        draw_overlay(bgr, cells, out / "overlay_gt.jpg", use_gt=True)
+        draw_overlay(bgr, cells, out / "overlay_gt.jpg", use_gt=True, draft_gt=draft_gt)
     sheets = draw_sheets(cells, preps, out, max(c.col for c in cells), args.rows_per_sheet, threshold,
                          use_gt=bool(gts))
 
@@ -593,7 +636,7 @@ def main() -> int:
 
     print("\n".join(lines[:7]))
     if gts:
-        acc = accuracy_report(cells, Path(args.input).name, args.gt_csv, args.gt_writer, threshold)
+        acc = accuracy_report(cells, Path(args.input).name, args.gt_csv, args.gt_writer, threshold, draft_gt)
         (out / "accuracy.md").write_text(acc, encoding="utf-8")
         print(acc.split("## Wrong")[0])
     print(f"wrote {out / 'overlay.jpg'}, {len(sheets)} sheets, results.csv/json, summary.md")

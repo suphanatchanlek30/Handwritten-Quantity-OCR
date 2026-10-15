@@ -9,7 +9,7 @@
 
 > **สถานะ:** prototype ที่ใช้งานได้จริง ยังไม่ใช่ production
 > ภาพสแกน 21 ใบ: ถูก 205/210 ช่อง และ**ไม่มีช่องที่ผิดแต่ระบบบอกว่า `ok`** — ช่องที่ผิดถูก flag ให้คนตรวจทั้งหมด
-> ยังไม่เคยทดสอบ**ใบสั่งสินค้า**ที่ถ่ายด้วยมือถือจริง (ทดสอบแค่ภาพจำลอง) — มีภาพถ่ายจริง 1 ใบที่เป็นกระดาษเปล่าเขียนตัวเลข 150 ตัว ถูก 64.0% เทียบเฉลยจริง
+> ยังไม่เคยทดสอบ**ใบสั่งสินค้า**ที่ถ่ายด้วยมือถือจริง (ทดสอบแค่ภาพจำลอง) — มีภาพถ่ายจริงที่เป็นกระดาษเปล่าเขียนตัวเลข 4 หน้า: ลายมือชัดถูก 98–99%, ลายมือที่ 4/2/8 คล้าย 9 ถูก 64–77%
 > (ดู [อ่านหน้ากระดาษเปล่าที่มีตัวเลขหลายตัว](#อ่านหน้ากระดาษเปล่าที่มีตัวเลขหลายตัว-scriptsgrid_page_ocrpy)) — ดูหัวข้อ [ข้อจำกัด](#10-ข้อจำกัด-และสิ่งที่ยังไม่ได้ทำ)
 
 ---
@@ -149,6 +149,7 @@ handwritten-qty-ocr/
 │       ├── annotations.user_confirmed.json  ✔ example.jpg — ผู้ใช้ยืนยันค่าแล้ว (verified)
 │       ├── annotations.draft.json           ✎ arm-1..20 + example — agent ถอดเอง, ยังไม่มีคนตรวจ
 │       ├── real_verified-2.csv              ✔ เฉลยจริงจากเจ้าของ: IMG_9328 (writer data1, 150 ตัว) + หน้า Mind (154 ตัว)
+│       ├── toey.claude_draft.csv            ✎ หน้า toey 150 ตัว — Claude อ่านเอง (status claude_draft) ยังไม่มีเจ้าของตรวจ
 │       ├── annotations-2.csv, labels_to_fill-2.csv  สำเนาไฟล์เดียวกับ real_verified-2.csv (เนื้อหาเหมือนกันทุกไบต์)
 │       ├── IMG_9328.claude_reading_unverified.json  ✎ หน้ากระดาษเปล่า 150 ตัว — agent อ่านเอง, ไม่ใช่เฉลย (ใช้ real_verified-2.csv แทน)
 │       └── annotations.example.json         ตัวอย่าง format เท่านั้น (ค่าสมมติ)
@@ -223,6 +224,8 @@ handwritten-qty-ocr/
 | ภาพฟอร์มใหม่ (มีคอลัมน์ No.) | `../Data Test/test/example.jpg` | ทดสอบฟอร์มคนละแบบ — ค่าเฉลยยืนยันโดยผู้ใช้แล้ว |
 | ภาพถ่ายมือถือจริง: กระดาษเปล่าเขียนตัวเลข 150 ตัว (ถ่ายตะแคง) | `../Data Test/test-1-page/IMG_9328.jpg` | ทดสอบ `scripts/grid_page_ocr.py` — เฉลยจริงอยู่ใน `data/ground_truth/real_verified-2.csv` (writer `data1`) |
 | ภาพถ่ายมือถือจริง: กระดาษเปล่า ปากกาน้ำเงิน 150 ตัว (ตั้งตรง) | `../Data Test/test-1-page/S__30957572.jpg` | ทดสอบ `scripts/grid_page_ocr.py` — ยังไม่มีเฉลย |
+| ภาพถ่ายมือถือจริง: กระดาษแนวนอน 11 × 14 = 154 ตัว | `../Data Test/test-1-page/Mind.jpg` | เฉลยจริงใน `real_verified-2.csv` (writer `Mind`) |
+| ภาพถ่ายมือถือจริง: กระดาษเปล่า 150 ตัว (ตั้งตรง) | `../Data Test/test-1-page/toey.jpg` | เฉลยร่างโดย Claude: `data/ground_truth/toey.claude_draft.csv` |
 | โมเดล | `~/.paddlex/official_models/` | ดูหัวข้อ 3 |
 | Python environment | `.venv/` (ในโปรเจกต์แต่ไม่ควร copy ข้ามเครื่อง) | สร้างใหม่ด้วย `setup_mac.sh` |
 
@@ -320,6 +323,7 @@ sheet_1..N.png      ★ ทุกตัวเลข (5 แถว/แผ่น): 
 overlay.jpg         ★ ทั้งหน้า: กรอบรอบตัวเลข + คำตอบเหนือแต่ละตัว + ป้าย rXcY
 overlay_gt.jpg      (--gt-csv) ทั้งหน้า: เขียว=ถูก แดง=ผิด, ค่าจริงอยู่ใต้กรอบ
 accuracy.md         (--gt-csv) ความแม่นยำ, ช่องที่ผิดแต่ได้ ok, แยกตามจำนวนหลัก, รายการช่องที่ผิดทั้งหมด
+                       เฉลยที่ status ไม่ใช่ verified ต้องใส่ --allow-draft-gt และทุกไฟล์จะติดป้าย DRAFT GT
 results.csv         1 แถวต่อตัวเลข: value, status, confidence, review_reasons, ผล tight/segments, ... + คอลัมน์ gt / correct
 results.json        ผลเต็มทุกตัว
 summary.md          สรุป + ตารางตัวที่ต้องตรวจพร้อมเหตุผล
@@ -358,6 +362,32 @@ python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/S__30957572.jp
 
 ตัดได้ครบ 150 ตัว, `ok` 92 / `needs_review` 58 — แถว 1–9 เขียนเรียง 10…99 จึงเทียบกับลำดับนั้นได้ (**เฉลยสันนิษฐาน ไม่ใช่เฉลยที่ยืนยัน**):
 ถูก 69/90 = 76.7%, ผิดแต่ได้ `ok` 6 ตัว — ทั้งหมดเป็น **เลข 2 ที่เขียนคล้าย 9** (22→99, 25→95, 32→39, 42→49, 62→69, 97→94)
+
+ภาพที่ 3: `../Data Test/test-1-page/Mind.jpg` (แนวนอน, 11 × 14 = 154 ตัว) — เทียบ**เฉลยจริง** (`real_verified-2.csv`, writer `Mind`):
+
+```bash
+python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/Mind.jpg" --output outputs/Mind_grid --rotate none --cols 14 --rows 11 --gt-csv data/ground_truth/real_verified-2.csv --gt-writer Mind
+```
+
+**ถูก 151/154 = 98.1%**, `ok` 142 ตัวถูกทั้งหมด, ผิดแต่ได้ `ok` 0 — 3 ช่องที่ผิด (210→270, 260→210, 750→75) ถูก flag ทั้งหมด
+และทุกช่องมีวิธีอ่านอย่างใดอย่างหนึ่ง (ทั้งก้อน / ทีละหลัก) ที่ได้ค่าถูก
+
+ภาพที่ 4: `../Data Test/test-1-page/toey.jpg` (15 × 10 = 150 ตัว) — เทียบ**เฉลยร่างที่ Claude อ่านเอง** (`toey.claude_draft.csv`, ยังไม่มีเจ้าของตรวจ):
+
+```bash
+python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/toey.jpg" --output outputs/toey_grid --rotate none --cols 10 --rows 15 --gt-csv data/ground_truth/toey.claude_draft.csv --allow-draft-gt
+```
+
+ถูก 149/150 = 99.3% (เฉลยร่าง), `ok` 135 ตัวถูกทั้งหมด, ผิดแต่ได้ `ok` 0 — ช่องเดียวที่ผิดคือ "89." (มีจุดปากกาต่อท้าย) อ่านเป็น 899 และถูก flag
+
+| หน้า | ถูก | ผิดแต่ได้ `ok` | เฉลย |
+|---|---|---|---|
+| toey | 99.3% | 0 | ร่างโดย Claude |
+| Mind | 98.1% | 0 | จริง (verified) |
+| S__30957572 | ~76.7% (แถว 1–9) | 6 | สันนิษฐานจากลำดับ 10…99 |
+| IMG_9328 | 64.0% | 5 | จริง (verified) |
+
+ความต่างมาจาก**ลายมือ**เป็นหลัก: หน้าที่เขียนตัวเลขแยกชัดได้ 98–99% ส่วนหน้าที่เขียน 4/2/8 คล้าย 9 ลดลงมาก และมีช่องที่ผิดแต่ได้ `ok`
 ลองเพิ่ม padding / บังคับความกว้างขั้นต่ำแล้ว แย่ลง → ใช้ `tight_crop_padding_ratio: 0.35` เดิม
 
 ---
@@ -463,7 +493,7 @@ python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/S__30957572.jp
 1. ทดสอบกับ**ภาพถ่ายใบสั่งสินค้าจริง**จากหลายคน หลายมุม — และเพิ่มขั้นปรับแสงเข้า pipeline หลัก
    (ต้องตรวจด้วย `compare_results.py` ว่าผลบนภาพสแกนเดิมไม่เปลี่ยน)
 2. ให้คนตรวจ `data/ground_truth/annotations.draft.json` แล้วตั้ง `"verified": true`
-   และรันหน้า `Mind` (เฉลยอยู่ใน `real_verified-2.csv` แล้ว) เพื่อวัดภาพถ่ายจริงมากกว่า 1 หน้า
+   ให้เจ้าของตรวจ `toey.claude_draft.csv` (ถ้าถูกให้เปลี่ยน status เป็น verified) และหาเฉลยของ `S__30957572.jpg`
 3. ปรับ `confidence_review_threshold` จากข้อมูลจริงเพื่อลดจำนวนช่องที่ต้อง review (~20%)
 4. Fine-tune โมเดลสำหรับเลข 1 หัวงอ — **เริ่มแล้วผู้ใช้ยกเลิก** ไฟล์ที่เกี่ยวข้องลบหมดแล้ว
    ถ้าจะทำต่อ ต้องมีใบสั่งสินค้าจริงที่เขียนเลข 1 หัวงอและเลข 7 ด้วยลายมือจริงก่อน (ตอนนี้มีตัวอย่างจริงแค่ 1 ตัว)
