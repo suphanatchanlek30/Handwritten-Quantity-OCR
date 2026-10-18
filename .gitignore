@@ -1,10 +1,32 @@
 # Python environments / caches
 .venv/
 .venv-*/
+venv/
+env/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor settings and local secrets (commit an explicit .env.example if needed)
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+
+# Jupyter and local logs
+.ipynb_checkpoints/
+*.log
 
 # Generated run outputs; recreate them locally when needed.
 outputs/*
@@ -12,3 +34,10 @@ outputs/*
 
 # Local copy of model weights (~81 MB) — official weights, re-downloadable; keep out of git
 models/
+.paddlex/
+model-cache/
+
+# Private source documents. Keep the committed samples and verified ground truth
+# under data/samples/ and data/ground_truth/ for reproducible examples.
+data/incoming/
+data/private/

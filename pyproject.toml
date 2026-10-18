@@ -5,8 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "qty-ocr"
 version = "0.1.0"
-description = "Handwritten quantity OCR for CHANGHOUSE order forms using PP-OCRv5_server_rec"
+description = "Local handwritten quantity OCR for table-based order forms"
+readme = "README.md"
 requires-python = ">=3.11,<3.12"
+keywords = ["ocr", "handwriting", "computer-vision", "pp-ocr", "document-processing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "numpy>=1.26",
     "opencv-contrib-python==4.10.0.84",
@@ -14,8 +24,20 @@ dependencies = [
     "PyYAML>=6",
 ]
 
+[project.urls]
+Homepage = "https://github.com/suphanatchanlek30/Handwritten-Quantity-OCR"
+Repository = "https://github.com/suphanatchanlek30/Handwritten-Quantity-OCR"
+Issues = "https://github.com/suphanatchanlek30/Handwritten-Quantity-OCR/issues"
+
 [project.optional-dependencies]
-ocr = ["paddleocr==3.7.0"]
+# The platform scripts are the recommended installation path because the
+# PaddlePaddle wheel source differs by operating system and hardware.
+ocr = [
+    "paddlepaddle==3.3.0",
+    "paddleocr==3.7.0",
+    "paddlex==3.7.2",
+    "onnxruntime==1.31.0",
+]
 dev = ["pytest>=8"]
 
 [project.scripts]

@@ -1,6 +1,6 @@
-# Verified on MacBook Air M5 / macOS 27.0.1 / Python 3.11.17 (arm64) on 2026-10-14
-# PaddlePaddle must come from the official CPU index:
-#   python -m pip install paddlepaddle==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# Runtime and test dependencies pinned for reproducible local setup.
+# Use the platform script in scripts/ so PaddlePaddle is installed from the
+# appropriate wheel index for your operating system and architecture.
 paddlepaddle==3.3.0
 paddleocr==3.7.0
 paddlex==3.7.2

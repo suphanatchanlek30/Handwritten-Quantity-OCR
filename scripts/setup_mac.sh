@@ -25,6 +25,10 @@ if [[ ! -d .venv ]]; then
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
+if ! python -c 'import platform, sys; assert sys.version_info[:2] == (3, 11); assert platform.machine() == "arm64"'; then
+  echo "ERROR: .venv must use Python 3.11 on arm64. Remove .venv and run this script again." >&2
+  exit 1
+fi
 python -m pip install --upgrade pip
 
 # PaddlePaddle CPU wheel from the official index (macOS arm64)
