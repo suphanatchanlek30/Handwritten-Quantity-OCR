@@ -34,7 +34,10 @@ def test_config_validation(cfg):
 
 def test_config_rejects_unknown_key(tmp_path):
     p = tmp_path / "c.yaml"
-    p.write_text(CONFIG_PATH.read_text() + "\nocr_typo:\n  x: 1\n")
+    p.write_text(
+        CONFIG_PATH.read_text(encoding="utf-8") + "\nocr_typo:\n  x: 1\n",
+        encoding="utf-8",
+    )
     with pytest.raises(ConfigError):
         load_config(p)
 
