@@ -7,44 +7,38 @@ project:
   template_id: CHANGHOUSE_AUTO
 
 hardware:
-  # cpu  = ใช้ CPU (ค่าที่ตรวจแล้วบน Mac; Apple Silicon ไม่มี NVIDIA GPU)
-  # auto = ใช้ GPU ถ้ามี CUDA สำหรับ engine ที่เลือก ไม่งั้นใช้ CPU
-  # gpu / gpu:N = บังคับใช้ NVIDIA GPU (ถ้าไม่มี → error ชัดเจน ไม่ถอยไป CPU เงียบๆ)
-  # เส้นทาง GPU เตรียมไว้แต่ยังไม่ได้ทดสอบบน GPU จริง — ดู README หัวข้อ "รันบน GPU"
+  # cpu uses the local CPU; auto selects a supported CUDA GPU when available.
+  # gpu or gpu:N requires CUDA and fails clearly instead of falling back to CPU.
   device: cpu
   cpu_threads: 4
 
 network:
-  # เครื่องนี้ IPv6 ใช้ไม่ได้ → บังคับ IPv4 ก่อนดาวน์โหลดโมเดล
+  # Use IPv4 for model downloads on networks with unreliable IPv6.
   force_ipv4: true
-  # ข้ามการเช็กการเชื่อมต่อ model hoster ตอน init (ใช้ cache ในเครื่อง)
+  # Avoid PaddleX connectivity checks when a local model cache is available.
   disable_model_source_check: true
 
 ocr:
   model_name: PP-OCRv5_server_rec
-  # onnxruntime = โมเดล PP-OCRv5_server_rec ตัวเดียวกัน (weights ทางการที่ export เป็น ONNX: PaddlePaddle/PP-OCRv5_server_rec_onnx)
-  # วัดบน M5: OCR ~54 → ~19 ms/ภาพ (เร็วขึ้น ~2.9x), RSS ~1.15 → ~0.74 GB; ผล value/status/needs_review ตรง baseline 630/630 field
-  # (score ต่างกัน ≤ 4e-5) — ตรวจด้วย scripts/compare_results.py; กลับไปใช้ paddle_static ได้ทุกเมื่อ
+  # ONNX Runtime uses the official ONNX export of PP-OCRv5_server_rec.
   engine: onnxruntime
-  # thread ของ ONNX Runtime: วัดสลับ A/B แล้ว 4 (= จำนวน P-core) เร็วเท่า/ดีกว่า default และไม่แย่ง core กับ OpenCV
+  # Limit ONNX threads so image processing retains CPU capacity.
   onnx_intra_op_threads: 4
-  # ใช้เฉพาะ paddle_static: MKLDNN/oneDNN เป็นของ x86 — บน Apple Silicon ไม่มี (paddlex is_mkldnn_available() = False)
+  # Paddle-only option; disabled for portable CPU behaviour.
   enable_mkldnn: false
-  # batch_size > 1: paddle เร็วขึ้นแค่ ~3%, onnxruntime ช้าลง ~2x (ภาพกว้างไม่เท่ากัน ต้อง pad) → คง 1
+  # Keep batches small because crop widths vary.
   batch_size: 1
-  # สมมติฐานเริ่มต้นเท่านั้น ยังไม่ได้ calibrate กับ labeled data
+  # Recalibrate only with human-verified labels.
   confidence_review_threshold: 0.85
-  # variant หลักที่ใช้เป็นคำตอบ (เลือกจากผล experiment E1-E6 บน 20 ภาพ: tight_crop ดีที่สุดชัดเจน)
-  # variant อื่นใช้ cross-check เท่านั้น
+  # Primary reading; other enabled variants are cross-checks.
   primary_variant: tight_crop
-  # ถอดรหัสผลโมเดลใหม่โดยจำกัดให้ออกได้แค่ 0-9 (ใช้ probability เดิม ไม่ต้อง inference เพิ่ม)
+  # Decode existing model probabilities as digits only.
   digit_constrained_decoding: true
-  # ตัวเลขเขียนติดกันที่โมเดลรวบเป็นตัวเดียว (79 → 7): ถอดใหม่แบบบังคับ +1 หลัก
-  # ถ้าความน่าจะเป็นลดลงไม่เกินค่านี้ (mean log-prob/frame) → ใช้ค่าที่ยาวขึ้น + needs_review
+  # Accept an n+1-digit recovery only within this score penalty; always review it.
   missing_digit_max_penalty: 0.03
-  # ยอมได้มากขึ้นเมื่อจำนวนกลุ่มหมึก > จำนวนหลักที่อ่านได้ (เช่น 11 → 1)
+  # Allow a larger recovery penalty when ink groups imply a missing digit.
   missing_digit_max_penalty_with_ink_groups: 0.06
-  # variant รองที่อ่านได้ค่าต่างจาก primary ด้วย score >= ค่านี้ → needs_review
+  # Flag a confident secondary reading that disagrees with the primary result.
   contradiction_min_score: 0.85
 
 field:
@@ -64,8 +58,7 @@ template:
   header_rows: 1
 
 layout:
-  # auto = หาตาราง/คอลัมน์/แถวจากภาพเอง (ไม่ต้องวัดพิกัด, ทนภาพถ่ายเอียง/บิด/แสงไม่เท่า, ฟอร์มเพิ่มคอลัมน์ได้)
-  # template = ใช้พิกัดใน section template ข้างบน (โหมดเดิม)
+  # auto detects table geometry; template uses the fixed coordinates above.
   mode: auto
   # ขนาดตารางหลังยืดตรง (px) — ทำให้ threshold ของลายมือใช้ได้ทุกความละเอียดภาพ
   normalized_table_width: 1360
@@ -76,7 +69,7 @@ layout:
   # ค้นหาเส้นขอบนอกจริงเผื่อออกไป (สัดส่วนความกว้างตาราง) แล้วยืดใหม่ให้ขอบตรงเส้น
   search_margin_ratio: 0.08
   border_tolerance_px: 8
-  # ทดลองแล้ว: kernel สั้นลงแย่กว่า (คง 1.0); refine 2 รอบดีที่สุดเมื่อใช้คู่กับ fit_border_lines
+  # Coarse detection scale and refinement passes.
   coarse_kernel_scale: 1.0
   refine_iterations: 2
   # กรอบผู้สมัครเพิ่มจาก mask ที่ขยายให้ท่อนเส้นที่ขาดต่อกัน (สัดส่วนขนาดภาพ)
@@ -150,9 +143,7 @@ blank_detection:
   group_min_height_ratio: 0.3
 
 preprocessing:
-  # ค่า default มาจากการทดลองบน 20 ภาพ (docs/BENCHMARK.md):
-  #   tight_crop + digit_segments (ทั้งคู่ใช้ digit-constrained decoding) ดีที่สุดและเร็วกว่า
-  #   variant แบบทั้งช่อง (original/grayscale/red_mask/ink_isolation/adaptive) ยังเปิดใช้ได้เพื่อทดลอง
+  # Enable only the primary crop and per-digit cross-check by default.
   original: false
   grayscale: false
   red_mask: false

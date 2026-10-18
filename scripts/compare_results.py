@@ -10,7 +10,7 @@ because two scores 4e-5 apart can round to 0.833 / 0.834. ``--strict`` compares
 the reason strings character by character instead.
 
 Usage:
-    python scripts/compare_results.py outputs/baseline_scan outputs/candidate_scan
+    python scripts/compare_results.py outputs/reference_scan outputs/candidate_scan
 Exit code: 0 = identical, 1 = differences, 2 = missing documents / usage error.
 """
 

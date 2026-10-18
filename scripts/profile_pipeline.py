@@ -8,7 +8,7 @@ determinism (value / status / review reasons).
 
 Usage:
     python scripts/profile_pipeline.py --inputs "../Data Test" "../Data Test/test/example.jpg" \\
-        --repeat 3 --save-results outputs/baseline_scan --label baseline
+        --repeat 3 --save-results outputs/validation --label validation
 """
 
 from __future__ import annotations

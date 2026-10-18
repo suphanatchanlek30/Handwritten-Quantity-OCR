@@ -6,10 +6,8 @@ project:
   template_id: CHANGHOUSE_V2
 
 hardware:
-  # cpu  = ใช้ CPU (ค่าที่ตรวจแล้วบน Mac; Apple Silicon ไม่มี NVIDIA GPU)
-  # auto = ใช้ GPU ถ้ามี CUDA สำหรับ engine ที่เลือก ไม่งั้นใช้ CPU
-  # gpu / gpu:N = บังคับใช้ NVIDIA GPU (ถ้าไม่มี → error ชัดเจน ไม่ถอยไป CPU เงียบๆ)
-  # เส้นทาง GPU เตรียมไว้แต่ยังไม่ได้ทดสอบบน GPU จริง — ดู README หัวข้อ "รันบน GPU"
+  # cpu uses the local CPU; auto selects a supported CUDA GPU when available.
+  # gpu or gpu:N requires CUDA and fails clearly instead of falling back to CPU.
   device: cpu
   cpu_threads: 4
 
@@ -21,9 +19,7 @@ network:
 
 ocr:
   model_name: PP-OCRv5_server_rec
-  # onnxruntime = โมเดล PP-OCRv5_server_rec ตัวเดียวกัน (weights ทางการที่ export เป็น ONNX: PaddlePaddle/PP-OCRv5_server_rec_onnx)
-  # วัดบน M5: OCR ~54 → ~19 ms/ภาพ (เร็วขึ้น ~2.9x), RSS ~1.15 → ~0.74 GB; ผล value/status/needs_review ตรง baseline 630/630 field
-  # (score ต่างกัน ≤ 4e-5) — ตรวจด้วย scripts/compare_results.py; กลับไปใช้ paddle_static ได้ทุกเมื่อ
+  # ONNX Runtime uses the official ONNX export of PP-OCRv5_server_rec.
   engine: onnxruntime
   # thread ของ ONNX Runtime: วัดสลับ A/B แล้ว 4 (= จำนวน P-core) เร็วเท่า/ดีกว่า default และไม่แย่ง core กับ OpenCV
   onnx_intra_op_threads: 4
@@ -33,8 +29,7 @@ ocr:
   batch_size: 1
   # สมมติฐานเริ่มต้นเท่านั้น ยังไม่ได้ calibrate กับ labeled data
   confidence_review_threshold: 0.85
-  # variant หลักที่ใช้เป็นคำตอบ (เลือกจากผล experiment E1-E6 บน 20 ภาพ: tight_crop ดีที่สุดชัดเจน)
-  # variant อื่นใช้ cross-check เท่านั้น
+  # Primary reading; other enabled variants are cross-checks.
   primary_variant: tight_crop
   # ถอดรหัสผลโมเดลใหม่โดยจำกัดให้ออกได้แค่ 0-9 (ใช้ probability เดิม ไม่ต้อง inference เพิ่ม)
   digit_constrained_decoding: true
@@ -147,9 +142,7 @@ blank_detection:
   group_min_height_ratio: 0.3
 
 preprocessing:
-  # ค่า default มาจากการทดลองบน 20 ภาพ (docs/BENCHMARK.md):
-  #   tight_crop + digit_segments (ทั้งคู่ใช้ digit-constrained decoding) ดีที่สุดและเร็วกว่า
-  #   variant แบบทั้งช่อง (original/grayscale/red_mask/ink_isolation/adaptive) ยังเปิดใช้ได้เพื่อทดลอง
+  # Enable only the primary crop and per-digit cross-check by default.
   original: false
   grayscale: false
   red_mask: false

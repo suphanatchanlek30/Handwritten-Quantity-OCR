@@ -1,22 +1,10 @@
-"""Cut every handwritten number off a free-form grid page and read each one with PP-OCRv5.
+"""Read handwritten numbers arranged in a free-form grid with PP-OCRv5.
 
-The page is plain paper (no table lines): numbers are found as ink blobs, grouped
-into one box per number, sorted into columns (x) then rows (y). Each number then goes
-through the same per-cell steps as the main pipeline (``configs/changhouse.yaml``):
-
-    detect_blank -> tight_crop (+ digit_segments when >= 2 ink groups)
-    -> PP-OCRv5_server_rec (ONNX Runtime, digit-constrained decoding)
-    -> postprocessing.decide (merged-digit recovery, segment cross-check, review reasons)
-
-Crops are taken from a lighting-flattened page: on a phone photo the paper is grey
-(~170), and tight_crop's white border around a grey patch looks like a box that the
-model reads as "□", "口" or "日". Measured on IMG_9328 (150 numbers, tight_crop only):
-mean digit score 0.48 -> 0.71 with flattening.
+This utility is for pages without printed table rules. It finds ink groups, orders
+them into a grid, then applies the main pipeline's per-cell OCR and review policy.
 
 Usage:
-    python scripts/grid_page_ocr.py --input "../Data Test/test-1-page/IMG_9328.jpg" \
-        --output outputs/IMG_9328_grid --cols 10 --rows 15 \
-        --reading data/ground_truth/IMG_9328.claude_reading_unverified.json
+    python scripts/grid_page_ocr.py --input page.jpg --output outputs/page --cols 10 --rows 15
 
     # with verified labels (one row per number, numbered left->right, top->bottom):
     python scripts/grid_page_ocr.py ... --gt-csv data/ground_truth/real_verified-2.csv --gt-writer data1
@@ -53,8 +41,7 @@ ROTATIONS = {
 }
 FONT_PATHS = ["/System/Library/Fonts/Supplemental/Thonburi.ttc", "/System/Library/Fonts/Helvetica.ttc"]
 CROP_MARGIN_PX = 16  # context kept around each number's ink before detect_blank
-# Every pixel size in this script (kernels, areas, margins, fonts) was set on a 2160 px wide page;
-# pages are resized to this width first so phone photos of any resolution behave the same.
+# Normalize page width so pixel-based thresholds are resolution-independent.
 WORK_WIDTH = 2160
 
 GREEN, ORANGE, RED, GREY = (22, 140, 60), (215, 120, 0), (200, 30, 30), (90, 90, 90)
@@ -90,7 +77,7 @@ class Cell:
         return None if not self.gt else self.value == self.gt
 
 
-# ---------------------------------------------------------------- segmentation
+# Segmentation
 def page_mask(bgr: np.ndarray) -> np.ndarray:
     """Convex hull of the bright, unsaturated paper (keeps shadowed paper, drops the desk)."""
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
@@ -149,7 +136,53 @@ def find_numbers(ink: np.ndarray, min_area: int,
     if out:
         med_h = float(np.median([t[3] - t[1] for _, t in out]))
         out = [(g, t) for g, t in out if t[3] - t[1] >= min_height_ratio * med_h]
+        med_w = float(np.median([t[2] - t[0] for _, t in out]))
+        out = [p for g, t in out for p in split_wide(ink, g, t, med_w, med_h, min_height_ratio)]
+        out = drop_isolated(out)
     return out
+
+
+def split_wide(ink: np.ndarray, group: tuple[int, int, int, int], tight: tuple[int, int, int, int],
+               med_w: float, med_h: float, min_height_ratio: float,
+               width_ratio: float = 3.0, gap_ratio: float = 0.5) -> list:
+    """Split an unusually wide merged blob at its widest ink-free column gap."""
+    x0, y0, x1, y1 = tight
+    if x1 - x0 <= width_ratio * med_w:
+        return [(group, tight)]
+    empty = ink[y0:y1, x0:x1].max(axis=0) == 0
+    best_len, best_mid, run = 0, 0, 0
+    for i, e in enumerate(empty):
+        run = run + 1 if e else 0
+        if run > best_len:
+            best_len, best_mid = run, i - run // 2
+    if best_len < gap_ratio * med_h:
+        return [(group, tight)]
+    parts = []
+    for a, b in ((x0, x0 + best_mid), (x0 + best_mid, x1)):
+        ys, xs = np.nonzero(ink[y0:y1, a:b])
+        t = (a + int(xs.min()), y0 + int(ys.min()), a + int(xs.max()) + 1, y0 + int(ys.max()) + 1)
+        if t[3] - t[1] < min_height_ratio * med_h:
+            return [(group, tight)]  # Keep the original when a split creates noise.
+        g = (t[0], group[1], t[2] - t[0], group[3])
+        parts.append((g, t))
+    return [p for g, t in parts for p in split_wide(ink, g, t, med_w, med_h, min_height_ratio,
+                                                    width_ratio, gap_ratio)]
+
+
+def drop_isolated(found: list, ratio: float = 4.0) -> list:
+    """Drop blobs isolated from the number grid, such as marks at the page edge."""
+    if len(found) < 3:
+        return found
+    ctr = np.array([((t[0] + t[2]) / 2, (t[1] + t[3]) / 2) for _, t in found])
+    d = np.sqrt(((ctr[:, None] - ctr[None]) ** 2).sum(-1))
+    np.fill_diagonal(d, np.inf)
+    nn = d.min(axis=1)
+    keep = nn <= ratio * float(np.median(nn))
+    for (_, t), k, v in zip(found, keep, nn):
+        if not k:
+            print(f"drop isolated blob at x{t[0]}-{t[2]} y{t[1]}-{t[3]} "
+                  f"(nearest number {v:.0f}px, {v / np.median(nn):.1f}x median)")
+    return [f for f, k in zip(found, keep) if k]
 
 
 def to_grid(found: list, tol_ratio: float = 1.0) -> list[Cell]:
@@ -212,7 +245,7 @@ def to_grid(found: list, tol_ratio: float = 1.0) -> list[Cell]:
     return [Cell(ri + 1, ci + 1, items[j][0], items[j][1]) for ri, r in enumerate(rows) for ci, j in enumerate(r)]
 
 
-# ---------------------------------------------------------------- per-cell system steps
+# Per-cell OCR
 @dataclass
 class Prepared:
     crop: np.ndarray
@@ -270,7 +303,7 @@ def decide_cell(cell: Cell, prep: Prepared, raws: list, cfg) -> None:
         cell.segments_text = "".join(r.digit_text or "?" for r in raws[1:])
 
 
-# ---------------------------------------------------------------- drawing
+# Rendering
 def font(size: int) -> ImageFont.FreeTypeFont:
     for p in FONT_PATHS:
         if Path(p).exists():
@@ -311,7 +344,7 @@ def draw_overlay(page_bgr: np.ndarray, cells: list[Cell], path: Path, use_gt: bo
     else:
         n_ok = sum(c.status == "ok" for c in cells)
         legend = f"GREEN = ok ({n_ok})   ORANGE = needs review ({len(cells) - n_ok})   number above box = model answer"
-    # legend parts are separated by 3 spaces; wrap them so nothing runs off the page
+    # Wrap legend entries before they exceed the page width.
     f_leg, lines = font(30), [""]
     measure = ImageDraw.Draw(page)
     for part in legend.split("   "):
@@ -427,7 +460,7 @@ def draw_sheets(cells: list[Cell], preps: dict[tuple[int, int], Prepared], out_d
     return paths
 
 
-# ---------------------------------------------------------------- ground truth
+# Ground truth
 def load_gt_csv(path: Path, writer: str | None, n_cols: int,
                 allow_draft: bool = False) -> tuple[dict[tuple[int, int], str], bool]:
     """Labels numbered 1..N left->right, top->bottom -> ({(row, col): label}, is_draft).
@@ -503,7 +536,7 @@ def accuracy_report(cells: list[Cell], image: str, gt_path: str, writer: str | N
     return "\n".join(lines) + "\n"
 
 
-# ---------------------------------------------------------------- main
+# CLI
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--input", required=True)
